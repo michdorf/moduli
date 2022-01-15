@@ -1,0 +1,32 @@
+{
+  "0 debug pnpm:scope": {
+    "selected": 1
+  },
+  "1 debug pnpm:package-manifest": {
+    "initial": {
+      "dependencies": {
+        "test": "file:Progetti/moduli/test"
+      }
+    },
+    "prefix": "/Users/michele/Progetti/moduli/playground"
+  },
+  "2 debug pnpm:context": {
+    "currentLockfileExists": false,
+    "storeDir": "/Users/michele/.pnpm-store/v3",
+    "virtualStoreDir": "/Users/michele/Progetti/moduli/playground/node_modules/.pnpm"
+  },
+  "3 debug pnpm:stage": {
+    "prefix": "/Users/michele/Progetti/moduli/playground",
+    "stage": "resolution_started"
+  },
+  "4 error pnpm": {
+    "code": "ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND",
+    "pkgsStack": [],
+    "err": {
+      "name": "Error",
+      "message": "No package.json (or package.yaml, or package.json5) was found in \"/Users/michele/Progetti/moduli/playground/Progetti/moduli/test\".",
+      "code": "ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND",
+      "stack": "Error: No package.json (or package.yaml, or package.json5) was found in \"/Users/michele/Progetti/moduli/playground/Progetti/moduli/test\".\n    at readProjectManifest (/Users/michele/pnpm-global/5/node_modules/.pnpm/pnpm@6.9.1/node_modules/pnpm/dist/pnpm.cjs:39698:13)\n    at async Object.readProjectManifestOnly (/Users/michele/pnpm-global/5/node_modules/.pnpm/pnpm@6.9.1/node_modules/pnpm/dist/pnpm.cjs:39702:28)\n    at async Object.resolveLocal [as default] (/Users/michele/pnpm-global/5/node_modules/.pnpm/pnpm@6.9.1/node_modules/pnpm/dist/pnpm.cjs:78449:35)\n    at async Object.resolve (/Users/michele/pnpm-global/5/node_modules/.pnpm/pnpm@6.9.1/node_modules/pnpm/dist/pnpm.cjs:79354:309)\n    at async run (/Users/michele/pnpm-global/5/node_modules/.pnpm/pnpm@6.9.1/node_modules/pnpm/dist/pnpm.cjs:65439:23)"
+    }
+  }
+}

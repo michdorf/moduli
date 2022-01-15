@@ -1,0 +1,7 @@
+lockfileVersion: 5.3
+
+specifiers:
+  test: file:/Users/michele/Progetti/moduli/test
+
+dependencies:
+  test: link:../test

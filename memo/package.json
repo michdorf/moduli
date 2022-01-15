@@ -1,0 +1,16 @@
+{
+  "name": "memo",
+  "version": "1.0.0",
+  "description": "Un modo di sincronizzare data da una versione locale a un server PHP",
+  "main": "memo.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "indexedDB",
+    "PHP",
+    "DB"
+  ],
+  "author": "Michele de Chiffre",
+  "license": "ISC"
+}
