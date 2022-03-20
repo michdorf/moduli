@@ -1,0 +1,22 @@
+{
+  "name": "moduli",
+  "version": "1.0.0",
+  "description": "Piccoli moduli di michele",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://michdorf@github.com/michdorf/moduli.git"
+  },
+  "author": "Michele",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/michdorf/moduli/issues"
+  },
+  "homepage": "https://github.com/michdorf/moduli#readme"
+}
