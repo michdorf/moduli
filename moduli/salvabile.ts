@@ -21,9 +21,10 @@ class Salvabile {
         return this._data;
     }
 
-    constructor(zona: string) {
+    constructor(appname: string, zona: string) {
         this.staIniziando = true;
         this.zona = zona;
+        this.storageKey = appname;
         this._data = this.carica();
 
         this._data.subscribe(_ => {
