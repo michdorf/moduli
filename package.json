@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/michdorf/moduli/issues"
   },
-  "homepage": "https://github.com/michdorf/moduli#readme"
+  "homepage": "https://github.com/michdorf/moduli#readme",
+  "dependencies": {
+    "svelte": "^3.48.0"
+  }
 }

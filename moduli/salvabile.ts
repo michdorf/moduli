@@ -8,6 +8,7 @@ export interface SalvabileServizio {
     zona: string;
     esporta(data: unknown): unknown;
     importa(data: unknown): unknown;
+    agg(riga: unknown): void;
 }
 
 let _statoGlobale: {[key: string]: string} = {};
