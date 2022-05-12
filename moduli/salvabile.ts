@@ -61,12 +61,12 @@ class Salvabile {
     }
 
     importa(data: unknown[]) {
-        console.error("You must implement importa in class " + this.constructor.name);
+        // console.error("You must implement importa in class " + this.constructor.name);
         return data;
     }
 
     esporta(data: unknown[]) {
-        console.error("You must implement esporta in class " + this.constructor.name);
+        // console.error("You must implement esporta in class " + this.constructor.name);
         return data;
     }
 }
