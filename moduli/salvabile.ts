@@ -16,7 +16,7 @@ class Salvabile {
     private storageKey = "pensum";
     private staIniziando = true;
     zona: string;
-    private _data: Writable<any[]>;
+    private _data: Writable<unknown[]>;
 
     get data() {
         return this._data;
@@ -28,7 +28,7 @@ class Salvabile {
         this.storageKey = appname;
         this._data = this.carica();
 
-        this._data.subscribe(_ => {
+        this._data.subscribe(() => {
             this.salva();
         });
     }
@@ -44,7 +44,7 @@ class Salvabile {
     }
 
     agg(riga: unknown) {
-        this._data.update((righe) => [riga, ...righe]);
+        this._data.update((righe: unknown[]) => [riga, ...righe]);
     }
 
     salva() {
