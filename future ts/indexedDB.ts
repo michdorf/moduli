@@ -7,10 +7,14 @@ import debug from './debug';
 indexedDB = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
 
 //prefixes of window.IDB objects
-// @ts-ignore 
-IDBTransaction = IDBTransaction || webkitIDBTransaction || msIDBTransaction;
-// @ts-ignore 
-IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
+if (!('IDBTransaction' in window)) {
+  // @ts-ignore 
+  IDBTransaction = IDBTransaction || webkitIDBTransaction || msIDBTransaction;
+}
+if (!('IDBKeyRange' in window)) {
+  // @ts-ignore 
+  IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
+}
 
 class iDB {
   macchina = "indexedDB";
