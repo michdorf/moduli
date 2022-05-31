@@ -1,6 +1,7 @@
 import uuid from './uuid';
 import iDB from '../moduli/indexedDB'
 import stellaDB from '../moduli/stellaDB';
+import MemoSinc from './memo.sinc'
 import { JSONparseNums } from '../moduli/webapp.helper'
 
 const UPDATE_TIPO = Object.freeze({UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella"});
@@ -20,7 +21,7 @@ type tUpdateFunz = (tipo: tUPDATE_TIPO, riga: any) => any;
  * @constructor
  */
 class Memo {
-  db: typeof stellaDB | typeof iDB;
+  db: stellaDB | iDB;
   nome_db = "";
   nomi_tabelle: string[];
   unico_chiave = "UUID";
@@ -29,29 +30,26 @@ class Memo {
 
   constructor(nome_db: string, nomi_tabelle: string[], indexes: Array<Array<string>>) {
     var is_web_worker = typeof window === "undefined";
-    if (!("init_sinc" in Memo.prototype) && !is_web_worker) { // Ignore for web workers
-      alert("memo.js ha bisogno di memo.sinc.js per funzionare!");
-    }
-
+    
     this.nome_db = nome_db;
     this.nomi_tabelle = nomi_tabelle;
     var indexedDB_supportato = typeof iDB === "object" && iDB.compat;
 
-    let suPronto = () => {this.sonoPronto = true; this._esegui_suPronto(this)};
+    let suPronto = () => {this.sonoPronto = true; this._esegui_suPronto()};
     if (indexedDB_supportato) {
-      iDB.apri(this.nome_db).then(function () {iniz_tabelle.bind(this)(nomi_tabelle, suPronto, indexes)}.bind(this));
-      this.db = iDB;
+      this.db = new iDB();
+      this.db.apri(this.nome_db).then(() => {this.iniz_tabelle(nomi_tabelle, suPronto, indexes)});
     } else {
       this.db = new stellaDB(this.nome_db);
-      iniz_tabelle.bind(this)(nomi_tabelle, suPronto, indexes);
+      this.iniz_tabelle.bind(this)(nomi_tabelle, suPronto, indexes);
     }
 
     if (!is_web_worker) {
-      this.init_sinc();
+      MemoSinc.init_sinc();
     }
   }
 
-  iniz_tabelle(nomi_tabelle: string[], suFinito: ()=>void, indexes?: string[]) {
+  iniz_tabelle(nomi_tabelle: string[], suFinito: ()=>void, indexes?: string[][] | undefined) {
     let n_finiti = 0;
     nomi_tabelle = typeof nomi_tabelle !== "undefined" ? nomi_tabelle : [];
     for (var i = 0; i < nomi_tabelle.length; i++) {
@@ -109,7 +107,7 @@ esegui_before_update(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any) {
  * @param  {[type]} funz         [description]
  * @return {[type]}              [description]
  */
-dopo_update(nome_tabella: string, funz: tUPDATE_TIPO) {
+dopo_update(nome_tabella: string, funz: tUpdateFunz) {
   this.$dopo_update.push({
     nome_tabella: nome_tabella,
     funz: funz
@@ -147,7 +145,7 @@ esegui_senti(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any) {
   return riga;
 }
 
-autocrea_tabella(nome_tabella: string, suFinito: () => void, indexes: string[]) {
+autocrea_tabella(nome_tabella: string, suFinito: () => void, indexes: string[] | undefined) {
   suFinito = typeof suFinito === "function" ? suFinito : function () {};
   indexes = Array.isArray(indexes) ? indexes : [];
   nome_tabella = this.pulisci_t_nome(nome_tabella);

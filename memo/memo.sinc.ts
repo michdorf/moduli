@@ -1,19 +1,21 @@
-Memo.prototype.sinc = {
-  storage_chiave: "memo_sinc",
-  inpausa: false,
-  debounce_hdl: 0,
-  fetch_interval: 1000,
-  min_fetch_interval: 200,
-  max_fetch_interval: 20000
-};
+import Memo from './memo'
 
-Memo.prototype.init_sinc = function () {
-  const stato_predef = '{}';
-  this.sinc_global_stato = JSON.parse((localStorage.getItem(this.sinc.storage_chiave) || stato_predef));
-  this.sinc_stato = this.sinc_global_stato[this.nome_db] || {};
-  this.sinc_stato.camb_aspettanti = this.sinc_stato.camb_aspettanti || [];
+class MemoSinc {
+  storage_chiave = "memo_sinc";
+  inpausa = false;
+  debounce_hdl = 0;
+  fetch_interval = 1000;
+  min_fetch_interval = 200;
+  max_fetch_interval = 20000;
 
-  this.sinc_comunica();
+  init_sinc() {
+    const stato_predef = '{}';
+    this.sinc_global_stato = JSON.parse((localStorage.getItem(this.sinc.storage_chiave) || stato_predef));
+    this.sinc_stato = this.sinc_global_stato[this.nome_db] || {};
+    this.sinc_stato.camb_aspettanti = this.sinc_stato.camb_aspettanti || [];
+  
+    this.sinc_comunica();
+  };
 };
 
 Memo.prototype.pausa_sinc = function (pausa) {
@@ -225,3 +227,5 @@ Memo.prototype.sinc_riazzera = function () {
   this.sinc_stato.camb_aspettanti = [];
   localStorage.removeItem(this.sinc.storage_chiave);
 };
+
+export default new MemoSinc();

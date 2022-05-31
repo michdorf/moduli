@@ -14,7 +14,7 @@ IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
 
 class iDB {
   macchina = "indexedDB";
-  db_HDL;
+  db_HDL: any;
   insert_id = 0;
   compat = true;
   db_nome = "de_data";
@@ -41,10 +41,10 @@ class iDB {
     return true;
   }
 
-  apri(nomebanca) {
+  apri(nomebanca: string) {
     this.db_nome = nomebanca = nomebanca ? nomebanca : this.db_nome;
 
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
       var db_versione = typeof this.db_HDL === "object" ? parseInt(this.db_HDL.version) + 1 : 1;
       var request = indexedDB.open(nomebanca);
       request.onerror = function (event) {
@@ -65,7 +65,7 @@ class iDB {
         resolve(this.db_HDL);
       };
 
-      this.db_HDL.onversionchange = (event) => {
+      this.db_HDL.onversionchange = () => {
         this.db_HDL.close();
         alert("A new version of the page is ready Please reload!");
       };
@@ -461,4 +461,4 @@ class iDB {
   }
 }
 
-export default new iDB();
+export default iDB;
