@@ -71,7 +71,7 @@ class stellaDB {
     return new Promise(function (resolve) {
       resolve(new stellaDB(nomebanca));
     });
-  };
+  }
 
   /**
    * Crea una tabella - a non confondere con stellaDB.creaBanca()
@@ -93,7 +93,7 @@ class stellaDB {
 
     this.agg_tabella(db_nome, tabella_nome, this.vuota_tabella);
     // TODO: lav evt. indexering
-  };
+  }
 
   /**
    * Crea tabelle in stellaDB
@@ -122,7 +122,7 @@ class stellaDB {
 
   creaTabelle(args: Args) {
     return this.creaBanca(args);
-  };
+  }
   /**
    * Ritorna se la tabella e stata creata
    * @param tabella_nome - nome tabella in db
@@ -166,7 +166,7 @@ class stellaDB {
       localStorage[tabellaKey] = JSON.stringify(tabella);
       resolve(ins_inx, riga);
     })
-  };
+  }
 
   select(nome_tabella: string, args: Args) {
     return new Promise((resolve: Function, reject: Function) => {
@@ -214,7 +214,7 @@ class stellaDB {
       }); // End of setTimeout
 
     });
-  };
+  }
 
   /**
    *
@@ -367,7 +367,7 @@ class stellaDB {
   salva_db_stat(db_nome: string, db_stat: any) {
     localStorage[this.get_db_stat_key(db_nome)] = JSON.stringify(db_stat);
     return db_stat;
-  };
+  }
 
   /**
    * Ritorna impostazioni della database
@@ -383,7 +383,7 @@ class stellaDB {
       localStorage[storKey] = JSON.stringify({});
     }
     return JSON.parse(localStorage[storKey]);
-  };
+  }
 
   /**
    * Ritorna la chiave usato in localStorage per salvare impostazioni per la db
@@ -391,7 +391,7 @@ class stellaDB {
    */
   get_db_stat_key(db_nome: string) {
     return this.storagePrefisso + db_nome;
-  };
+  }
 
   /**
    * Ritorna un object della tabella
@@ -436,7 +436,7 @@ class stellaDB {
 
   get_tabella(db_nome: string, nome_tabella: string, clone?: boolean) {
     return this.get_righe(db_nome, nome_tabella, clone);
-  };
+  }
 
   /**
    *
@@ -464,7 +464,7 @@ class stellaDB {
 
     // @ts-ignore
     return clone(this.db_cache[db_nome]);
-  };
+  }
 
   agg_tabella(db_nome: string, nome_tabella: string, contenuto: string[]) {
     if (!db_nome || !nome_tabella) {
@@ -483,7 +483,7 @@ class stellaDB {
 
     // @ts-ignore
     this.db_cache[db_nome][nome_tabella] = contenuto;
-  };
+  }
 
   /**
    * Ritorna la chiave usato in localStorage per salvare una tabella
@@ -492,7 +492,7 @@ class stellaDB {
    */
   get_tabella_key(db_nome: string, nome_tabella: string) {
     return this.storagePrefisso + db_nome + "_" + nome_tabella;
-  };
+  }
 
   sort(array: Array<any>, prop2sort: string) {
     // Check type of prop
@@ -514,7 +514,7 @@ class stellaDB {
     return array.sort(function (a, b) {
       return a[prop2sort] - b[prop2sort];
     })
-  };
+  }
 
   calcolaMaxSpazio() {
     let storageSize;
@@ -535,7 +535,7 @@ class stellaDB {
 
   run_async(this_obj: any, funz: Function) {
     return setTimeout(funz.bind(this_obj), 0);
-  };
+  }
 }
 
 export default stellaDB;
