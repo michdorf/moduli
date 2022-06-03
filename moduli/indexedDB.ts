@@ -17,7 +17,7 @@ if (!('IDBKeyRange' in window)) {
 }
 
 type CampoTipi = string | number;
-type JSONArgsTipo =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][], callBackFunc?: () => void};
+export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][], callBackFunc?: () => void};
 
 class iDB {
   macchina = "indexedDB";
@@ -94,7 +94,7 @@ class iDB {
   // JSON_args.databasenavn
   // JSON_args.tabelle
   // JSON_args.index
-  creaBanca(JSON_args: JSONArgsTipo) {
+  creaBanca(JSON_args: idbArgs) {
     if (this.compat === false) {
       debug.error("Non è riuscito a creare la tabella. (Il browser non è compattibile)  - iDB.creaTabella()", "iDB");
       throw new Error("Non è riuscito a creare la tabella. (Il browser non è compattibile) - iDB.creaTabella()");
@@ -169,13 +169,13 @@ class iDB {
 
   //Lo stesso a iDB.creaBanca - ma un nome diverso
   //NB: a non confondere a creaTabella()
-  creaTabelle(JSON_args: JSONArgsTipo) {
+  creaTabelle(JSON_args: idbArgs) {
     return this.creaBanca(JSON_args);
   }
 
   //Come iDB.creaBanca - ma se vuoi creare una sola tabella
   //NB: a non confondere a creaTabelle()
-  creaTabella(nomeTabella: string, index_arr: string[], args: JSONArgsTipo) {
+  creaTabella(nomeTabella: string, index_arr: string[], args?: idbArgs) {
     args = args ? args : {};
     args.tabelle = [nomeTabella];
     if (!Array.isArray(index_arr))
@@ -231,7 +231,7 @@ class iDB {
   */
   select(tabella: string, args: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
     args = args ? args : {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: (rige: unknown[]) => void, reject) => {
       if (!this.isWorking()) {
         reject(new Error("Browser non compattibile. iDB.select()"));
         return false;
@@ -378,7 +378,7 @@ class iDB {
   };
 
   cancella(nometabella: string, primaryKeyValore: CampoTipi) {
-    var promise = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       if (primaryKeyValore === undefined) {
         reject(new Error("primaryKeyValore er ikke sat i iDB.cancella()"));
         return false;

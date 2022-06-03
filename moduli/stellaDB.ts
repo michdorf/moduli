@@ -9,7 +9,7 @@ if (typeof clone !== "function" || typeof makeArray !== "function") {
   alert("stellaDB.js richiede clone() e makeArray() da webapp.helper.js");
 }
 
-interface Args {
+export interface stellaArgs {
   tabella?: string;
   tabelle?: string[];
   valore?: any;
@@ -99,7 +99,7 @@ class stellaDB {
    * Crea tabelle in stellaDB
    * @param {object} args - props: tabelle
    */
-  creaBanca(args: Args) {
+  creaBanca(args: stellaArgs) {
     return new Promise((resolve: Function, reject: Function) => {
       var db_nome = this.db_nome;
 
@@ -120,7 +120,7 @@ class stellaDB {
     });
   }
 
-  creaTabelle(args: Args) {
+  creaTabelle(args: stellaArgs) {
     return this.creaBanca(args);
   }
   /**
@@ -168,8 +168,8 @@ class stellaDB {
     })
   }
 
-  select(nome_tabella: string, args: Args) {
-    return new Promise((resolve: Function, reject: Function) => {
+  select(nome_tabella: string, args: stellaArgs) {
+    return new Promise((resolve: (rige: unknown[]) => void, reject: Function) => {
 
       // Run async
       this.run_async(this, () => {

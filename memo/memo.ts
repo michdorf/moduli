@@ -1,17 +1,18 @@
 import uuid from './uuid';
-import iDB from '../moduli/indexedDB'
-import stellaDB from '../moduli/stellaDB';
+import iDB, {idbArgs} from '../moduli/indexedDB'
+import stellaDB, {stellaArgs} from '../moduli/stellaDB';
 import MemoSinc from './memo.sinc'
 import { JSONparseNums } from '../moduli/webapp.helper'
 
-const UPDATE_TIPO = Object.freeze({UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella"});
-type tUPDATE_TIPO = "UPDATE" | "INSERIMENTO" | "CANCELLAZIONE";
+const UPDATE_TIPO: {[key: string]: tUPDATE_TIPO} = Object.freeze({UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella"});
+type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
 interface iUpdateListener {
   nome_tabella: string; 
   funz: tUpdateFunz;
 }
 type tUpdateListeners = Array<iUpdateListener>;
 type tUpdateFunz = (tipo: tUPDATE_TIPO, riga: any) => any;
+type suErroreFunz = (msg: string) => void;
 
 /**
  * [Memo description]
@@ -33,7 +34,8 @@ class Memo {
     
     this.nome_db = nome_db;
     this.nomi_tabelle = nomi_tabelle;
-    var indexedDB_supportato = typeof iDB === "object" && iDB.compat;
+    const iDBtmp = new iDB();
+    var indexedDB_supportato = iDBtmp.compat;
 
     let suPronto = () => {this.sonoPronto = true; this._esegui_suPronto()};
     if (indexedDB_supportato) {
@@ -151,10 +153,10 @@ autocrea_tabella(nome_tabella: string, suFinito: () => void, indexes: string[] |
   nome_tabella = this.pulisci_t_nome(nome_tabella);
     if (!this.db.essisteTabella(nome_tabella)) {
       if (this.db.macchina === "stellaDB"){
-        stellaDB.creaTabella(this.nome_db, nome_tabella);
+        (this.db as stellaDB).creaTabella(nome_tabella, nome_tabella);
         suFinito();
       } else { // indexedDB
-        this.db.creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
+        (this.db as iDB).creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
           suFinito();
         });
       }
@@ -172,11 +174,11 @@ impacchetta_camb(nome_tabella: string, riga: any) {
     };
 };
 
-pulisci_t_nome = function (nome_tabella) {
+pulisci_t_nome = function (nome_tabella: string) {
   return nome_tabella.replace(/[^0-9a-z]/gi, "");
 };
 
-inserisci = function (nome_tabella, riga, callback) {
+inserisci = (nome_tabella: string, riga: any, callback: (riga: unknown) => void) => {
   if (this._esegue_senti) {
     console.error("Non e' una buona idea di eseguire Memo.inserisci() dentro Memo.senti(). Aborta!");
     return;
@@ -186,21 +188,21 @@ inserisci = function (nome_tabella, riga, callback) {
         console.warn("Per cortesia lascia a memo.js a creare un UUID");
     }
     riga[this.unico_chiave] = this.uuid();
-    riga = this.esegui_before_update(nome_tabella, Memo.update_tipo.INSERIMENTO, riga);
-    return this.db.inserisci(nome_tabella, riga).then(function (){
-        this.sinc_cambia("inserisci", nome_tabella, riga);
-        this.esegui_dopo_update(nome_tabella, Memo.update_tipo.INSERIMENTO, riga);
+    riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
+    return this.db.inserisci(nome_tabella, riga).then(() => {
+        MemoSinc.sinc_cambia("inserisci", nome_tabella, riga);
+        this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
         if (typeof callback === "function") {
             callback(riga[this.unico_chiave]);
         }
-    }.bind(this));
+    });
 };
 
-seleziona = function (nome_tabella, args) {
+seleziona(nome_tabella: string, args: stellaArgs | idbArgs) {
   nome_tabella = this.pulisci_t_nome(nome_tabella);
-    return this.db.select(nome_tabella, args);
+  return this.db.select(nome_tabella, args);
 };
-select = function (nome_tabella, args) {
+select(nome_tabella: string, args: stellaArgs | idbArgs) {
     return this.seleziona(nome_tabella, args);
 };
 
@@ -211,7 +213,7 @@ select = function (nome_tabella, args) {
  * @param valori
  * @returns {*}
  */
-update = function (nome_tabella, id_unico, valori) {
+update(nome_tabella: string, id_unico: string, valori: Array<string | number>) {
   if (this._esegue_senti) {
     console.error("Non e' una buona idea di eseguire Memo.update() dentro Memo.senti(). Aborta!");
     return;
@@ -221,19 +223,19 @@ update = function (nome_tabella, id_unico, valori) {
     this.seleziona(nome_tabella, {
       field: this.unico_chiave,
       valore: id_unico
-    }).then(function (rige) {
+    }).then((rige: unknown[]) => {
       if (rige.length > 1) {
         this.errore("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
         reject("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
         return false;
       }
-      valori = this.esegui_before_update(nome_tabella, Memo.update_tipo.UPDATE, valori);
-      resolve(this.db.update(nome_tabella, rige[0].id, valori).then(function () {
+      valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
+      resolve(this.db.update(nome_tabella, (rige[0] as {id: number; [key: string]: unknown}).id, valori).then(() => {
         valori[this.unico_chiave] = id_unico;
-        this.sinc_cambia("update", nome_tabella, valori);
-        this.esegui_dopo_update(nome_tabella, Memo.update_tipo.UPDATE, valori);
-      }.bind(this)));
-    }.bind(this));
+        MemoSinc.sinc_cambia("update", nome_tabella, valori);
+        this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
+      }));
+    });
   });
 };
 
@@ -243,7 +245,7 @@ update = function (nome_tabella, id_unico, valori) {
  * @param id_unico - UUID
  * @returns {*}
  */
-cancella = function (nome_tabella, id_unico) {
+cancella(nome_tabella: string, id_unico: string) {
   if (this._esegue_senti) {
     console.error("Non e' una buona idea di eseguire Memo.cancella() dentro Memo.senti(). Aborta!");
     return;
@@ -253,19 +255,19 @@ cancella = function (nome_tabella, id_unico) {
     this.seleziona(nome_tabella, {
       field: this.unico_chiave,
       valore: id_unico
-    }).then(function (rige) {
+    }).then((rige) => {
       if (rige.length > 1) {
         this.errore("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
         reject("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
         return false;
       }
-      resolve(this.db.cancella(nome_tabella, rige[0].id).then(function () {
-        let valori = [];
+      resolve(this.db.cancella(nome_tabella, rige[0].id).then(() => {
+        let valori: Array<string | number> = [];
         valori[this.unico_chiave] = id_unico;
-        this.sinc_cambia("update", nome_tabella, valori);
-        this.esegui_dopo_update(nome_tabella, Memo.update_tipo.UPDATE, valori);
-      }.bind(this)));
-    }.bind(this));
+        MemoSinc.sinc_cambia("update", nome_tabella, valori);
+        this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
+      }));
+    });
   });
 };
 
@@ -276,7 +278,7 @@ cancella = function (nome_tabella, id_unico) {
  * @param  {function} suFinito viene esseguito quando ha finito
  * @return {Promise}          un promise
  */
-Memo.ajax = function (url, post_vars, suFinito) {
+ajax(url: string, post_vars: string, suFinito: (response: string, xhr: XMLHttpRequest) => void) {
   return new Promise(function (resolve: (response: string, xhr: XMLHttpRequest) => unknown, reject: (status: number, xhr: XMLHttpRequest) => unknown) {
 
     var xhr = new XMLHttpRequest();
@@ -302,31 +304,23 @@ Memo.ajax = function (url, post_vars, suFinito) {
   });
 };
 
-_err_ascolatori = [];
-suErrore = function (funz) {
+_err_ascolatori: Array<suErroreFunz> = [];
+suErrore(funz: suErroreFunz) {
   this._err_ascolatori.push(funz);
 };
-errore = function (msg) {
+errore = (msg: string) => {
   console.error(msg); // console.error(arguments.apply(null, arguments));
   for (var i = 0; i < this._err_ascolatori.length; i++) {
     this._err_ascolatori[i].bind(this)(msg);
   }
 };
 
-riazzera = function () {
-    this.sinc_riazzera();
+riazzera() {
+    MemoSinc.sinc_riazzera();
     this.db.eliminaDB(this.nome_db, function (tipo, msg) {
       location.reload();
     });
 };
-}
-
-if (typeof stellaDB !== "function" && typeof iDB !== "object") {
-    alert("memo.js ha bisogno di stellaDB o indexedDB (iDB) per funzionare!");
-}
-
-if (typeof JSONparseNums !== "function") {
-    alert("memo.js ha bisogno di webapp.helper.js per funzionare!");
 }
 
 export default Memo;
