@@ -4,7 +4,7 @@ import debug from './debug';
 
 //prefixes of implementation that we want to test
 // @ts-ignore 
-indexedDB = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
+indexedDB: IDBFactory = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
 
 //prefixes of window.IDB objects
 if (!('IDBTransaction' in window)) {
@@ -16,11 +16,12 @@ if (!('IDBKeyRange' in window)) {
   IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
 }
 
-type JSONArgsTipo =  {primary_key: string, databasenavn: string, tabelle: string[], index?: string[][], callBackFunc: () => void};
+type CampoTipi = string | number;
+type JSONArgsTipo =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][], callBackFunc?: () => void};
 
 class iDB {
   macchina = "indexedDB";
-  db_HDL: any;
+  db_HDL: any | IDBDatabase;
   insert_id = 0;
   compat = true;
   db_nome = "de_data";
@@ -51,7 +52,7 @@ class iDB {
     this.db_nome = nomebanca = nomebanca ? nomebanca : this.db_nome;
 
     return new Promise((resolve, reject) => {
-      var db_versione = typeof this.db_HDL === "object" ? parseInt(this.db_HDL.version) + 1 : 1;
+      var db_versione = typeof this.db_HDL === "object" ? this.db_HDL.version + 1 : 1;
       var request = indexedDB.open(nomebanca);
       request.onerror = function (event) {
         debug.log("error: med at requeste", "iDB");
@@ -135,7 +136,8 @@ class iDB {
       };
 
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-        this.db_HDL = event.target.newVersion;
+        // @ts-ignore jf. https://developer.mozilla.org/en-US/docs/Web/API/IDBOpenDBRequest/upgradeneeded_event
+        this.db_HDL = event.target.result;
 
         var indexer;
         var tabelle = makeArray(JSON_args.tabelle);
@@ -173,7 +175,7 @@ class iDB {
 
   //Come iDB.creaBanca - ma se vuoi creare una sola tabella
   //NB: a non confondere a creaTabelle()
-  creaTabella(nomeTabella: string, index_arr: string[], args: {index?: string[][], tabelle?: string[]}) {
+  creaTabella(nomeTabella: string, index_arr: string[], args: JSONArgsTipo) {
     args = args ? args : {};
     args.tabelle = [nomeTabella];
     if (!Array.isArray(index_arr))
@@ -205,12 +207,14 @@ class iDB {
         .objectStore(nomeTabella)
         .add(JSON_values);
 
-      request.onsuccess = (event: IDBOpenDBRequestEventMap) => {
+      request.onsuccess = (event: Event) => {
+        // @ts-ignore jf. https://developer.mozilla.org/en-US/docs/Web/API/IDBRequest/success_event
         this.insert_id = event.target.result;
+        // @ts-ignore
         resolve(event.target.result);
       };
 
-      request.onerror = function (event) {
+      request.onerror = function () {
         reject(new Error("Unable to add data\r\nthe row already exist in your database!"));
         debug.log("Unable to add data\r\n" + JSON.stringify(request.error), "iDB");
       };
@@ -225,9 +229,9 @@ class iDB {
   *  - startinx: number (primary-key index to start at - including that index) default to 1
   *  - limit: number (how many results you want)
   */
-  select(tabella, args) {//(tabel,key_value,callbackFunc)
+  select(tabella: string, args: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
     args = args ? args : {};
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
       if (!this.isWorking()) {
         reject(new Error("Browser non compattibile. iDB.select()"));
         return false;
@@ -269,10 +273,11 @@ class iDB {
       if (args.order && args.order.toLowerCase() === "desc")
         direction = "prev";//Den bytter om på rækkefølgen, så den sidste bliver den første etc.
 
-      var returneringer = [];
+      var returneringer: Array<unknown> = [];
       var cursorInx = 0;
-      request.openCursor(keyRangeValue, direction).onsuccess = function (event) {
-        var cursor = event.target.result;
+      request.openCursor(keyRangeValue, direction).onsuccess = function (event: Event) {
+
+        var cursor = request.result;
         //Tanke man kan implementere: Til når man kun skal have en bestemt værdi, skal man kun køre til den sidste række med den værdi (fordi det er sorteret efter args.field)
         //Til ideen skal du hoppe til afslutningen og ikke kalde cursor.continue()
         if (args.limit && returneringer.length >= args.limit) {
@@ -303,8 +308,8 @@ class iDB {
     });//Fine del promise
   }
 
-  num_rows(tabella) {
-    return new Promise(function (resolve, reject) {
+  num_rows(tabella: string) {
+    return new Promise((resolve, reject) => {
       if (!this.isWorking()) {
         debug.error("Browser non compattibile. iDB.num_rows()", "iDB");
         reject(new Error("Browser non compattibile. iDB.select()"));
@@ -323,8 +328,8 @@ class iDB {
     });
   }
 
-  update(nometabella, primaryKeyValore, valori) {
-    var promise = new Promise(function (resolve, reject) {
+  update(nometabella: string, primaryKeyValore: CampoTipi, valori: Array<CampoTipi>) {
+    var promise = new Promise((resolve, reject) => {
       if (nometabella === undefined || primaryKeyValore === undefined) {
         reject(new Error("nometabella eller primaryKeyValore er ikke sat i iDB.update()"));
         return false;
@@ -338,12 +343,12 @@ class iDB {
       var objectStore = this.db_HDL.transaction([nometabella], "readwrite").objectStore(nometabella);
       var request = objectStore.get(primaryKeyValore);
 
-      request.onerror = function updateError(event) {
+      request.onerror = function updateError(event: Event) {
         // Handle errors!
         reject(event);
       };
 
-      request.onsuccess = function updatePrimoSuc(event) {
+      request.onsuccess = function updatePrimoSuc(event: Event) {
         //Get the old value we want to update
         var data = request.result;
         if (data === undefined) {
@@ -359,10 +364,10 @@ class iDB {
 
         //Put the updated object back
         var requestUpdate = objectStore.put(data);
-        requestUpdate.onerror = function updateErrorSecondo(event) {
+        requestUpdate.onerror = function updateErrorSecondo(event: Event) {
           reject(event);
         };
-        requestUpdate.onsuccess = function updateSecondoSuc(event) {
+        requestUpdate.onsuccess = function updateSecondoSuc(event: Event) {
           //Success - the value is updated
           resolve(event);
         }
@@ -372,8 +377,8 @@ class iDB {
     return promise;
   };
 
-  cancella(nometabella, primaryKeyValore) {
-    var promise = new Promise(function (resolve, reject) {
+  cancella(nometabella: string, primaryKeyValore: CampoTipi) {
+    var promise = new Promise((resolve, reject) => {
       if (primaryKeyValore === undefined) {
         reject(new Error("primaryKeyValore er ikke sat i iDB.cancella()"));
         return false;
@@ -386,15 +391,15 @@ class iDB {
 
       var request = objectStore.delete(primaryKeyValore);
 
-      request.onsuccess = function (event) {
+      request.onsuccess = (event: Event) => {
         resolve(event);
       };
     });
   };
 
   //Returner specifik række med bestemt id (primary key)
-  with_key(tabella, primary_key_value) {
-    return new Promise(function (resolve, reject) {
+  with_key(tabella: string, primary_key_value: CampoTipi) {
+    return new Promise((resolve, reject) => {
 
       if (typeof this.db_HDL !== "object") {
         reject(new Error("La banca dati non e' ancora aperta. iDB.with_key()"));
@@ -405,10 +410,10 @@ class iDB {
       var objectStore = transaction.objectStore(tabella);
       var request = objectStore.get(primary_key_value);
 
-      request.onerror = function (event) {
+      request.onerror = function () {
         reject(new Error("Unable to retrieve data from database! iDB.with_key()"));
       };
-      request.onsuccess = function (event) {
+      request.onsuccess = function () {
         // Do something with the request.result!
         if (request.result) {
           resolve(request.result);
@@ -422,7 +427,7 @@ class iDB {
   /**
   * Funzione d'aiuto per creare una transazione
   */
-  apriTabella(nometabella) {
+  apriTabella(nometabella: string) {
     var nome_funz = this.apriTabella.caller ? this.apriTabella.caller.name : "iDB.apriTabella";
 
     if (nometabella === undefined) {
@@ -436,20 +441,20 @@ class iDB {
     var transazione = this.db_HDL.transaction([nometabella], "readwrite");
 
     // report on the success of the transaction completing, when everything is done
-    transazione.oncomplete = function (event) {
+    transazione.oncomplete = function () {
       // console.log("Transazione e andata bene in " + nome_funz + "()");
     };
 
-    transazione.onerror = function (event) {
+    transazione.onerror = function () {
       console.error("Transazione e andata storta in " + nome_funz + "()\nError: " + transazione.error);
     };
 
     return transazione.objectStore(nometabella);
   }
 
-  eliminaDB(db_nome, callback) {
+  eliminaDB(db_nome: string, callback: (tipo: 'success' | 'error' | 'blocked', msg: string, sistemaDb: 'iDB' | 'stellaDB') => void) {
     db_nome = db_nome ? db_nome : this.db_nome;
-    callback = typeof callback === "function" ? callback : function (tipo, msg) { };
+    callback = typeof callback === "function" ? callback : function (tipo, msg, sistemaDb) { };
     var request = indexedDB.deleteDatabase(db_nome);
     request.onsuccess = function (event) {
       debug.log("Databse " + db_nome + " slettet", "iDB");
@@ -458,12 +463,12 @@ class iDB {
 
     request.onerror = function (event) {
       console.log("Database " + db_nome + " ikke slettet");
-      callback("error", "Database " + db_nome + " ikke slettet");
+      callback("error", "Database " + db_nome + " ikke slettet", "iDB");
     };
 
     request.onblocked = function (event) {
       console.log("Database " + db_nome + " ikke slettet, fordi operationen blev blokeret");
-      callback("blocked", "Database " + db_nome + " ikke slettet, fordi operationen blev blokeret");
+      callback("blocked", "Database " + db_nome + " ikke slettet, fordi operationen blev blokeret", "iDB");
     }
   }
 }
