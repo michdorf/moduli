@@ -2,10 +2,9 @@ import uuid from './uuid';
 import iDB, {idbArgs} from '../moduli/indexedDB'
 import stellaDB, {stellaArgs} from '../moduli/stellaDB';
 import MemoSinc from './memo.sinc'
-import { JSONparseNums } from '../moduli/webapp.helper'
 
-const UPDATE_TIPO: {[key: string]: tUPDATE_TIPO} = Object.freeze({UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella"});
-type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
+export const UPDATE_TIPO: {[key: string]: tUPDATE_TIPO} = Object.freeze({UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella"});
+export type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
 interface iUpdateListener {
   nome_tabella: string; 
   funz: tUpdateFunz;
@@ -23,19 +22,21 @@ type suErroreFunz = (msg: string) => void;
  */
 class Memo {
   db: stellaDB | iDB;
+  sinc: MemoSinc;
   nome_db = "";
   nomi_tabelle: string[];
   unico_chiave = "UUID";
   sonoPronto = false;
   uuid = uuid; // Funzione per creare identificativo unico
 
-  constructor(nome_db: string, nomi_tabelle: string[], indexes: Array<Array<string>>) {
-    var is_web_worker = typeof window === "undefined";
-    
+  constructor(nome_db: string, nomi_tabelle: string[], indexes: Array<Array<string>>) {    
     this.nome_db = nome_db;
     this.nomi_tabelle = nomi_tabelle;
     const iDBtmp = new iDB();
     var indexedDB_supportato = iDBtmp.compat;
+
+    debugger;
+    this.sinc = /* typeof this === 'MemoSinc' */ new MemoSinc(nome_db, nomi_tabelle, indexes);
 
     let suPronto = () => {this.sonoPronto = true; this._esegui_suPronto()};
     if (indexedDB_supportato) {
@@ -44,10 +45,6 @@ class Memo {
     } else {
       this.db = new stellaDB(this.nome_db);
       this.iniz_tabelle.bind(this)(nomi_tabelle, suPronto, indexes);
-    }
-
-    if (!is_web_worker) {
-      MemoSinc.init_sinc();
     }
   }
 
@@ -190,7 +187,7 @@ inserisci = (nome_tabella: string, riga: any, callback: (riga: unknown) => void)
     riga[this.unico_chiave] = this.uuid();
     riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
     return this.db.inserisci(nome_tabella, riga).then(() => {
-        MemoSinc.sinc_cambia("inserisci", nome_tabella, riga);
+        this.sinc.sinc_cambia("inserisci", nome_tabella, riga);
         this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
         if (typeof callback === "function") {
             callback(riga[this.unico_chiave]);
@@ -213,7 +210,7 @@ select(nome_tabella: string, args: stellaArgs | idbArgs) {
  * @param valori
  * @returns {*}
  */
-update(nome_tabella: string, id_unico: string, valori: Array<string | number>) {
+update(nome_tabella: string, id_unico: string, valori: {[key: string]: string | number}) {
   if (this._esegue_senti) {
     console.error("Non e' una buona idea di eseguire Memo.update() dentro Memo.senti(). Aborta!");
     return;
@@ -232,7 +229,7 @@ update(nome_tabella: string, id_unico: string, valori: Array<string | number>) {
       valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
       resolve(this.db.update(nome_tabella, (rige[0] as {id: number; [key: string]: unknown}).id, valori).then(() => {
         valori[this.unico_chiave] = id_unico;
-        MemoSinc.sinc_cambia("update", nome_tabella, valori);
+        this.sinc.sinc_cambia("update", nome_tabella, valori);
         this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
       }));
     });
@@ -255,16 +252,16 @@ cancella(nome_tabella: string, id_unico: string) {
     this.seleziona(nome_tabella, {
       field: this.unico_chiave,
       valore: id_unico
-    }).then((rige) => {
+    }).then((rige: any) => {
       if (rige.length > 1) {
         this.errore("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
         reject("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
         return false;
       }
       resolve(this.db.cancella(nome_tabella, rige[0].id).then(() => {
-        let valori: Array<string | number> = [];
+        let valori: {[key: string]: string | number} = {};
         valori[this.unico_chiave] = id_unico;
-        MemoSinc.sinc_cambia("update", nome_tabella, valori);
+        this.sinc.sinc_cambia("update", nome_tabella, valori);
         this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
       }));
     });
@@ -278,7 +275,7 @@ cancella(nome_tabella: string, id_unico: string) {
  * @param  {function} suFinito viene esseguito quando ha finito
  * @return {Promise}          un promise
  */
-ajax(url: string, post_vars: string, suFinito: (response: string, xhr: XMLHttpRequest) => void) {
+static ajax(url: string, post_vars: string, suFinito?: (response: string, xhr: XMLHttpRequest) => void) {
   return new Promise(function (resolve: (response: string, xhr: XMLHttpRequest) => unknown, reject: (status: number, xhr: XMLHttpRequest) => unknown) {
 
     var xhr = new XMLHttpRequest();
@@ -316,7 +313,7 @@ errore = (msg: string) => {
 };
 
 riazzera() {
-    MemoSinc.sinc_riazzera();
+    this.sinc.sinc_riazzera();
     this.db.eliminaDB(this.nome_db, function (tipo, msg) {
       location.reload();
     });
