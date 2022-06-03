@@ -16,6 +16,8 @@ if (!('IDBKeyRange' in window)) {
   IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
 }
 
+type JSONArgsTipo =  {primary_key: string, databasenavn: string, tabelle: string[], index?: string[][], callBackFunc: () => void};
+
 class iDB {
   macchina = "indexedDB";
   db_HDL: any;
@@ -62,7 +64,7 @@ class iDB {
         resolve(this.db_HDL);
       };
 
-      request.onupgradeneeded = (event) => {
+      request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         // @ts-ignore
         this.db_HDL = event.target.result;
         debug.log("database upgraderet", "iDB");
@@ -76,13 +78,14 @@ class iDB {
     });
   }
 
-  primary_key(db_nome, nome_tabella) {
+  primary_key(db_nome: string, nome_tabella: string) {
     return this.std_primaryKey;//Jeg er stadig ikke sikker på hvordan man læser denne værdi dynamisk
   }
 
-  essisteTabella(tabella_nome) {
+  essisteTabella(tabella_nome: string) {
     return this.db_HDL.objectStoreNames.contains(tabella_nome); // DOMStringList != Array
   }
+
 
   //Crea una nuova banca dati e ritorna un oggetto Promise
   //Puoi specificare:
@@ -90,7 +93,7 @@ class iDB {
   // JSON_args.databasenavn
   // JSON_args.tabelle
   // JSON_args.index
-  creaBanca(JSON_args) {
+  creaBanca(JSON_args: JSONArgsTipo) {
     if (this.compat === false) {
       debug.error("Non è riuscito a creare la tabella. (Il browser non è compattibile)  - iDB.creaTabella()", "iDB");
       throw new Error("Non è riuscito a creare la tabella. (Il browser non è compattibile) - iDB.creaTabella()");
@@ -101,14 +104,14 @@ class iDB {
     if (typeof JSON_args.callBackFunc !== "undefined")
       debug.warn("JSON_args.callBackFunc non funziona piu in iDB.creaTabella(). Usa .then()", "iDB");
 
-    var promise = new Promise(function (resolve, reject) {
+    var promise = new Promise((resolve: (v: string) => void, reject: (v: Error) => void) => {
 
       if (typeof JSON_args.tabelle === "undefined") {
         reject(new Error("Devi specificare JSON_args.tabelle in iDB.creaTabella()"));
         return false;
       }
 
-      var request;
+      var request: IDBOpenDBRequest;
       if (typeof this.db_HDL === "object") {
         this.db_HDL.close();//Se vuoi fare l'upgrade deve essere chiuso
         var db_versione = parseInt(this.db_HDL.version) + 1;
@@ -125,14 +128,14 @@ class iDB {
         reject(new Error("error: med at requeste"));
       };
 
-      request.onsuccess = function (event) {
+      request.onsuccess = () => {
         this.db_HDL = request.result;
         //debug.log("success: "+ iDB.db_HDL,"iDB");
         resolve("success");
       };
 
-      request.onupgradeneeded = function (event) {
-        this.db_HDL = event.target.result;
+      request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+        this.db_HDL = event.target.newVersion;
 
         var indexer;
         var tabelle = makeArray(JSON_args.tabelle);
@@ -164,13 +167,13 @@ class iDB {
 
   //Lo stesso a iDB.creaBanca - ma un nome diverso
   //NB: a non confondere a creaTabella()
-  creaTabelle(JSON_args) {
+  creaTabelle(JSON_args: JSONArgsTipo) {
     return this.creaBanca(JSON_args);
   }
 
   //Come iDB.creaBanca - ma se vuoi creare una sola tabella
   //NB: a non confondere a creaTabelle()
-  creaTabella(nomeTabella, index_arr, args) {
+  creaTabella(nomeTabella: string, index_arr: string[], args: {index?: string[][], tabelle?: string[]}) {
     args = args ? args : {};
     args.tabelle = [nomeTabella];
     if (!Array.isArray(index_arr))
@@ -179,15 +182,15 @@ class iDB {
     return this.creaBanca(args);
   }
 
-  inserisci(nomeTabella, JSON_values) {
+  inserisci(nomeTabella: string, JSON_values: unknown) {
 
-    return new Promise(function (resolve: (ins_id: number, valori: unknown) => void, reject) {
+    return new Promise((resolve: (ins_id: number) => void, reject) => {
 
       if (typeof this.db_HDL !== "object") {
         debug.warn("Nessun BancaDati aperto. iDB.inserisci()", "iDB");
-        this.apri().then(function () {
-          this.inserisci(nomeTabella, JSON_values).then(function (ins_id, valori) {
-            resolve(ins_id, valori);
+        this.apri(nomeTabella).then(() => {
+          this.inserisci(nomeTabella, JSON_values).then((ins_id: number) => {
+            resolve(ins_id);
           }).catch(function (err) {
             reject(err);
           });
@@ -202,9 +205,9 @@ class iDB {
         .objectStore(nomeTabella)
         .add(JSON_values);
 
-      request.onsuccess = function (event) {
+      request.onsuccess = (event: IDBOpenDBRequestEventMap) => {
         this.insert_id = event.target.result;
-        resolve(event.target.result, JSON_values);
+        resolve(event.target.result);
       };
 
       request.onerror = function (event) {
