@@ -72,10 +72,12 @@ class iDB {
         resolve(this.db_HDL);
       };
 
-      this.db_HDL.onversionchange = () => {
-        this.db_HDL.close();
-        alert("A new version of the page is ready Please reload!");
-      };
+      if (this.db_HDL) {
+        this.db_HDL.onversionchange = () => {
+          this.db_HDL.close();
+          alert("A new version of the page is ready Please reload!");
+        };
+      }
     });
   }
 

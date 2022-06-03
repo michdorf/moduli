@@ -2,8 +2,7 @@ import Memo, {tUPDATE_TIPO, UPDATE_TIPO} from './memo'
 
 const is_web_worker = typeof window === "undefined";
 
-
-class MemoSinc extends Memo {
+export default class MemoSinc extends Memo {
   storage_chiave = "memo_sinc";
   sinc_stato: any = {};
   sinc_global_stato: {[key: string]: any} = {};
@@ -99,7 +98,7 @@ class MemoSinc extends Memo {
     /* console.log("comunica col server", this.sinc_stato.camb_aspettanti); */
     const post = "memo_cambs=" + encodeURIComponent(JSON.stringify(this.sinc_stato.camb_aspettanti));
     const ultimo_update = this.sinc_stato.ultimo_update || 0;
-    const url = "/memo/api/sinc.php?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
+    const url = "https://dechiffre.dk/memo/api/sinc.php?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
     Memo.ajax(url, post).then((responseText) => {
       if (responseText.substring(0,7)==="Errore:"){
         this.errore("Memo.sinc_comunica() " + responseText);
@@ -243,5 +242,3 @@ class MemoSinc extends Memo {
     localStorage.removeItem(this.sinc.storage_chiave);
   };
 }
-
-export default MemoSinc;
