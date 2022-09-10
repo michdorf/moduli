@@ -1,4 +1,4 @@
-class Intervallo {
+export default class Intervallo {
     inizio: number;
     fine: number;
 
@@ -11,7 +11,7 @@ class Intervallo {
         return "[" + this.inizio + "-" + this.fine + "]";
     }
 
-    private uguale(a: Intervallo): boolean {
+    public uguale(a: Intervallo): boolean {
         return this.inizio == a.inizio && this.fine == a.fine;
     }
 
@@ -23,7 +23,7 @@ class Intervallo {
         return (this.inizio >= contenuta_in.inizio && this.fine <= contenuta_in.fine);
     }
 
-    private include(numero: number): boolean {
+    public include(numero: number): boolean {
         return (numero >= this.inizio && numero <= this.fine);
     }
 
@@ -44,6 +44,7 @@ class Intervallo {
             return [];
         }
 
+        // Se da_sottrattere e centenuta in intervallo/fa parte del intervallo
         if (da_sottrattere.contenuta(intervallo)) {
             let r: Intervallo[] = [];
             if (intervallo.inizio != da_sottrattere.inizio) {
@@ -62,3 +63,5 @@ class Intervallo {
         }
     }
 }
+
+(window as any).Intervallo = Intervallo;
