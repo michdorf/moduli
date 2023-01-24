@@ -1,6 +1,6 @@
 const caratteri = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".split("");
 
-export type UUID_T = `${string}-${string}-${string}-${string}-${string}`;
+export type UUID_T = string | `${string}-${string}-${string}-${string}-${string}`;
 
 function uuid() {
   var chars = caratteri,
