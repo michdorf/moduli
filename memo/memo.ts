@@ -1,4 +1,4 @@
-import uuid from './uuid';
+import uuid from '../moduli/uuid';
 import iDB, { idbArgs } from '../moduli/indexedDB'
 import stellaDB, { stellaArgs } from '../moduli/stellaDB';
 import MemoSinc from './memo.sinc'
