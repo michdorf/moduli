@@ -18,43 +18,43 @@ export default class Ricorrente {
         }
     }
 
-    prossima(offset?: Date): Date {
+    static prossima(ricorrente: Ricorrente, offset?: Date): Date {
         const oggi = offset || new Date();
         oggi.setHours(0,0,0,0);
-        switch (this.intervallo) {
+        switch (ricorrente.intervallo) {
             case "g": {
-                const giorni = Math.floor((oggi.getTime() - this.primoGiorno.getTime())/(1000*60*60*24));
-                let giorniOffset = this.intervalloN-(giorni % this.intervalloN);
-                if (giorniOffset === this.intervalloN) {giorniOffset = 0;}
+                const giorni = Math.floor((oggi.getTime() - ricorrente.primoGiorno.getTime())/(1000*60*60*24));
+                let giorniOffset = ricorrente.intervalloN-(giorni % ricorrente.intervalloN);
+                if (giorniOffset === ricorrente.intervalloN) {giorniOffset = 0;}
                 oggi.setDate(oggi.getDate() + giorniOffset);
                 return oggi;
             }
             case "s":
-                oggi.setDate(oggi.getDate() + (this.primoGiorno.getDay() + 7 - oggi.getDay()) % 7);
+                oggi.setDate(oggi.getDate() + (ricorrente.primoGiorno.getDay() + 7 - oggi.getDay()) % 7);
                 return oggi;
             case "m": {
-                let mesiDiff = (oggi.getMonth() - this.primoGiorno.getMonth());
-                let diffAnni = oggi.getFullYear() - this.primoGiorno.getFullYear();
+                let mesiDiff = (oggi.getMonth() - ricorrente.primoGiorno.getMonth());
+                let diffAnni = oggi.getFullYear() - ricorrente.primoGiorno.getFullYear();
                 if (mesiDiff < 0) {
                     diffAnni -= 1;
                 }
                 mesiDiff += diffAnni * 12;
-                let mesiOffset = this.intervalloN - (mesiDiff % this.intervalloN);
-                if (mesiOffset === this.intervalloN) {
+                let mesiOffset = ricorrente.intervalloN - (mesiDiff % ricorrente.intervalloN);
+                if (mesiOffset === ricorrente.intervalloN) {
                     mesiOffset = 0
                 }
-                oggi.setMonth(mesiOffset + 1, this.primoGiorno.getDate());
+                oggi.setMonth(mesiOffset + 1, ricorrente.primoGiorno.getDate());
                 return oggi;
             }
             case "a": {
-                const annoD = new Date(oggi.getFullYear(), this.primoGiorno.getMonth(), this.primoGiorno.getDate());
+                const annoD = new Date(oggi.getFullYear(), ricorrente.primoGiorno.getMonth(), ricorrente.primoGiorno.getDate());
                 let anno = 0;
                 if (oggi.getTime() > annoD.getTime()) {
                     anno = annoD.getFullYear() + 1;
                 } else {
                     anno = annoD.getFullYear();
                 }
-                return new Date(anno, this.primoGiorno.getMonth(), this.primoGiorno.getDate());
+                return new Date(anno, ricorrente.primoGiorno.getMonth(), ricorrente.primoGiorno.getDate());
             }
         }
     }
