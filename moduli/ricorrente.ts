@@ -46,13 +46,17 @@ export default class Ricorrente {
                 oggi.setMonth(mesiOffset + 1, ricorrente.primoGiorno.getDate());
                 return oggi;
             }
-            case "a": {
-                const annoD = new Date(oggi.getFullYear(), ricorrente.primoGiorno.getMonth(), ricorrente.primoGiorno.getDate());
-                let anno = 0;
-                if (oggi.getTime() > annoD.getTime()) {
-                    anno = annoD.getFullYear() + 1;
-                } else {
-                    anno = annoD.getFullYear();
+            case "a": { // Non so come trattare skudår
+                let oggiAnno = oggi.getFullYear();
+                let diff = Math.abs(oggiAnno - ricorrente.primoGiorno.getFullYear());
+                diff = diff % ricorrente.intervalloN;
+                let anno = oggi.getFullYear() + diff;
+                if (diff === 0) { // Check hvis det er senere på året dato og måned => skyd til næste gang i rækken
+                    const oggiStamp = parseInt(oggi.getMonth()+""+oggi.getDate());
+                    const primoGiornoStamp = parseInt(ricorrente.primoGiorno.getMonth()+""+ricorrente.primoGiorno.getDate())
+                    if (oggiStamp > primoGiornoStamp) {
+                        anno += ricorrente.intervalloN;
+                    }
                 }
                 return new Date(anno, ricorrente.primoGiorno.getMonth(), ricorrente.primoGiorno.getDate());
             }
