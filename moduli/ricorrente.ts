@@ -40,10 +40,9 @@ export default class Ricorrente {
                 }
                 mesiDiff += diffAnni * 12;
                 let mesiOffset = ricorrente.intervalloN - (mesiDiff % ricorrente.intervalloN);
-                if (mesiOffset === ricorrente.intervalloN) {
+                /* if (mesiOffset === ricorrente.intervalloN) {
                     mesiOffset = 0
-                }
-                // Evt. mesiOffset + 1 (hvis du ikke tæller aktuelle måned med)
+                } */
                 oggi.setMonth(mesiOffset, ricorrente.primoGiorno.getDate());
                 return oggi;
             }
