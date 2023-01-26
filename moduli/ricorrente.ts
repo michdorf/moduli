@@ -43,6 +43,7 @@ export default class Ricorrente {
                 if (mesiOffset === ricorrente.intervalloN) {
                     mesiOffset = 0
                 }
+                // Evt. mesiOffset + 1 (hvis du ikke tæller aktuelle måned med)
                 oggi.setMonth(mesiOffset, ricorrente.primoGiorno.getDate());
                 return oggi;
             }
