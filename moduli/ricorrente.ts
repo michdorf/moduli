@@ -37,6 +37,7 @@ export default class Ricorrente {
                 let diffAnni = oggi.getFullYear() - ricorrente.primoGiorno.getFullYear();
                 if (mesiDiff < 0) {
                     diffAnni -= 1;
+                    mesiDiff += 12;
                 }
                 mesiDiff += diffAnni * 12;
                 let mesiOffset = ricorrente.intervalloN - (mesiDiff % ricorrente.intervalloN);
