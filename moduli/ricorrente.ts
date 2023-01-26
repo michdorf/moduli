@@ -9,7 +9,7 @@ export default class Ricorrente {
     constructor(intervallo: Intervallo, intervalloN?: number, primoGiorno?: Date) {
         this.intervallo = intervallo || "m";
         if (typeof intervalloN !== "undefined") {
-            this.intervalloN = intervalloN;
+            this.intervalloN = parseInt(intervalloN as unknown as string);
         }
         if (typeof primoGiorno !== "undefined") {
             // Sørg for at primogiorno tæller fra midnat (minus klokkeslæt)
@@ -43,7 +43,7 @@ export default class Ricorrente {
                 if (mesiOffset === ricorrente.intervalloN) {
                     mesiOffset = 0
                 }
-                oggi.setMonth(mesiOffset + 1, ricorrente.primoGiorno.getDate());
+                oggi.setMonth(mesiOffset, ricorrente.primoGiorno.getDate());
                 return oggi;
             }
             case "a": { // Non so come trattare skudår
