@@ -19,7 +19,8 @@ export default class Ricorrente {
     }
 
     static prossima(ricorrente: Ricorrente, offset?: Date): Date {
-        const oggi = offset || new Date();
+        // Copy date object before manipulations (.setHours etc.)
+        const oggi = offset ? new Date(offset.getTime()) : new Date();
         oggi.setHours(0,0,0,0);
         switch (ricorrente.intervallo) {
             case "g": {
