@@ -18,6 +18,25 @@ export default class Ricorrente {
         }
     }
 
+    static scorsa(ricorrente: Ricorrente, offset?: Date): Date {
+        const oggi = offset ? /*clone*/new Date(offset.getTime()) : new Date();
+        const prossima = Ricorrente.prossima(ricorrente, offset);
+        switch (ricorrente.intervallo) {
+            case "g":
+                prossima.setDate(prossima.getDate() - ricorrente.intervalloN);
+                return prossima;
+                case "s":
+                    prossima.setDate(prossima.getDate() - (ricorrente.intervalloN * 7));
+                    return prossima;
+                    case "m":
+                        prossima.setMonth(prossima.getMonth() - ricorrente.intervalloN);
+                        return prossima;
+                        case "a": // Non so come trattare skudår
+                prossima.setFullYear(prossima.getFullYear() - ricorrente.intervalloN);
+                return prossima;
+        }
+    }
+
     static prossima(ricorrente: Ricorrente, offset?: Date): Date {
         // Copy date object before manipulations (.setHours etc.)
         const oggi = offset ? new Date(offset.getTime()) : new Date();
