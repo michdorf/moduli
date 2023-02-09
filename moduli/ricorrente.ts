@@ -1,7 +1,18 @@
 // TODO: måske vil du kunne gentage "anden mandag i måneden"
 type Intervallo = "g" | "s" | "m" | "a"; // Giorni, settimane, mese, anno
 
-export default class Ricorrente {
+export interface RicorrenteT {
+    intervallo: Intervallo, 
+    intervalloN: number, 
+    primoGiorno: Date
+}
+export interface RicorrenteJSONT {
+    intervallo: Intervallo, 
+    intervalloN: number, 
+    primoGiorno: string
+}
+
+export default class Ricorrente implements RicorrenteT {
     primoGiorno: Date = new Date();
     intervallo: Intervallo;
     intervalloN = 1;
@@ -69,6 +80,14 @@ export default class Ricorrente {
                 // NB. mesiOffset er 0 hvis offset måned er en valid prossima dato
                 oggi.setMonth(oggi.getMonth() + mesiOffset, ricorrente.primoGiorno.getDate());
                 return oggi;
+        }
+    }
+
+    static daJSON(ricorrente: RicorrenteJSONT): RicorrenteT {
+        return {
+            intervallo: ricorrente.intervallo,
+            intervalloN: ricorrente.intervalloN,
+            primoGiorno: new Date(ricorrente.primoGiorno)
         }
     }
 }
