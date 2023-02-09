@@ -32,6 +32,7 @@ export default class Ricorrente implements RicorrenteT {
     static scorsa(ricorrente: Ricorrente, offset?: Date): Date {
         const oggi = offset ? /*clone*/new Date(offset.getTime()) : new Date();
         const prossima = Ricorrente.prossima(ricorrente, offset);
+        let intervalloN: number;
         switch (ricorrente.intervallo) {
             case "g":
                 prossima.setDate(prossima.getDate() - ricorrente.intervalloN);
@@ -40,10 +41,12 @@ export default class Ricorrente implements RicorrenteT {
                 prossima.setDate(prossima.getDate() - (ricorrente.intervalloN * 7));
                 return prossima;
             case "m":
-                prossima.setMonth(prossima.getMonth() - ricorrente.intervalloN);
+                intervalloN = ricorrente.intervalloN * (oggi.getDate() < prossima.getDate() ? 2 : 1);
+                prossima.setMonth(prossima.getMonth() - intervalloN);
                 return prossima;
             case "a": // Non so come trattare skudår
-                prossima.setFullYear(prossima.getFullYear() - ricorrente.intervalloN);
+                intervalloN = ricorrente.intervalloN * (oggi.getDate() < prossima.getDate() && oggi.getMonth() <= prossima.getMonth() ? 2 : 1);
+                prossima.setFullYear(prossima.getFullYear() - intervalloN);
                 return prossima;
         }
     }
