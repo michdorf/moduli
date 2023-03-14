@@ -247,7 +247,6 @@ class iDB {
         return false;
       }
 
-      debugger;
       var objectStore = this.db_HDL.transaction(/*[*/tabella/*]*/).objectStore(tabella);
       var request = objectStore;
       if (args?.field) {
@@ -277,8 +276,8 @@ class iDB {
 
       var returneringer: Array<unknown> = [];
       var cursorInx = 0;
-      request.openCursor(keyRangeValue, direction).onsuccess = function (event: Event) {
-        var cursor = event.target.result;
+      request.openCursor(keyRangeValue, direction).onsuccess = function (event: any) {
+        var cursor = event.target.result as IDBCursorWithValue;
         //Tanke man kan implementere: Til når man kun skal have en bestemt værdi, skal man kun køre til den sidste række med den værdi (fordi det er sorteret efter args.field)
         //Til ideen skal du hoppe til afslutningen og ikke kalde cursor.continue()
         if (args?.limit && returneringer.length >= args.limit) {

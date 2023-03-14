@@ -195,7 +195,7 @@ export default class Memo {
     });
   };
 
-  seleziona(nome_tabella: string, args: stellaArgs | idbArgs) {
+  seleziona(nome_tabella: string, args?: stellaArgs | idbArgs) {
     nome_tabella = this.pulisci_t_nome(nome_tabella);
     return this.db.select(nome_tabella, args);
   };
