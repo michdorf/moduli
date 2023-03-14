@@ -247,7 +247,8 @@ class iDB {
         return false;
       }
 
-      var objectStore = this.db_HDL.transaction([tabella]).objectStore(tabella);
+      debugger;
+      var objectStore = this.db_HDL.transaction(/*[*/tabella/*]*/).objectStore(tabella);
       var request = objectStore;
       if (args?.field) {
         try {
