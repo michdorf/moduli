@@ -3,15 +3,14 @@ import { makeArray } from './webapp.helper';
 import debug from './debug';
 
 //prefixes of implementation that we want to test
-// @ts-ignore 
-indexedDB: IDBFactory = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
+// indexedDB: IDBFactory = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
 
 //prefixes of window.IDB objects
-if (!('IDBTransaction' in window)) {
+if (typeof window !== "undefined" && !('IDBTransaction' in window)) {
   // @ts-ignore 
   IDBTransaction = IDBTransaction || webkitIDBTransaction || msIDBTransaction;
 }
-if (!('IDBKeyRange' in window)) {
+if (typeof window !== "undefined" && !('IDBKeyRange' in window)) {
   // @ts-ignore 
   IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
 }
