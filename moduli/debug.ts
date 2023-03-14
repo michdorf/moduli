@@ -2,12 +2,25 @@
  * Created by mich on 14-02-17.
  */
 
-const SESSIONSTOREAVAIL = (window && 'sessionStorage' in window);
+const SESSIONSTOREAVAIL = (typeof window !== "undefined" && 'sessionStorage' in window);
 
 interface LogVoce {
   txt:string;
   tags:string[];
   ora: number;
+}
+
+// Mock sessionStorage for web workers
+// @ts-ignore
+if (typeof sessionStorage === "undefined") {
+  var sessionStorage = {
+    setItem: function (key: string, value: string) {
+      return "";
+    },
+    getItem: function (key: string) {
+      return "";
+    }
+  }
 }
 
 class debug {
@@ -24,7 +37,7 @@ class debug {
   }
 
   main(txt: string,app: string,tipo = "log") { //app is a unique name for the app you are debugging - can be anything {
-    if (app && (this.sections!=["all"] && this.sections.indexOf(app)==-1))
+    if (app && (this.sections[0] != "all" && this.sections.indexOf(app)==-1))
       return;
     this.log_store(txt,app);
     switch (tipo){
@@ -43,47 +56,51 @@ class debug {
     }
   }
 
-  log(txt,app){this.main(txt,app)};
-  error(txt,app){this.main(txt,app,"error")};
-  warn(txt,app){this.main(txt,app,"warn")};
-  info(txt,app){this.main(txt,app,"info")};
+  log(txt: string, app: string){this.main(txt,app)};
+  error(txt: string, app: string){this.main(txt,app,"error")};
+  warn(txt: string, app: string){this.main(txt,app,"warn")};
+  info(txt: string, app: string){this.main(txt,app,"info")};
 
-  log_store(txt,tags){
+  log_store(txt: string, tags: string | string[]){
     tags = tags?tags:"";
     tags = Array.isArray(tags)?tags:[tags];
     this.full_log.push({txt:txt,tags:tags,ora:new Date().getTime()});
     if (SESSIONSTOREAVAIL) {
-      sessionStorage.setItem(this.store_key,JSON.stringify(this.full_log));
+      sessionStorage.setItem(this.store_key, JSON.stringify(this.full_log));
     }
   }
 
   mostra(){
     var win = window.open("", "Title", "toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=780, height=200, top="+(screen.height-400)+", left="+(screen.width-840));
-    win.document.body.innerHTML = '';//'<button onclick="sessionStorage.removeItem(\''+debug.log.store_key+'\')">Slet</button><br>';
-    var d;
-    var ultimo_ora = 0;
-    for (var i=0;i<this.full_log.length;i++){
-      if (ultimo_ora!=0 && (ultimo_ora-this.full_log[i].ora)>10000)
-        win.document.body.innerHTML += "<br>";
-  
-      d = new Date(this.full_log[i].ora);
-      win.document.body.innerHTML += d.getHours()+":"+(d.getMinutes()<10?"0"+d.getMinutes():d.getMinutes())+" ";
-      win.document.body.innerHTML += "<b>"+this.full_log[i].txt+"<b>";
-      for (let k in this.full_log[i].tags){
-        win.document.body.innerHTML += " <span style='background:green;color:white'>"+this.full_log[i].tags[k]+"</span>";
+    if (win) {
+      win.document.body.innerHTML = '';//'<button onclick="sessionStorage.removeItem(\''+debug.log.store_key+'\')">Slet</button><br>';
+      var d;
+      var ultimo_ora = 0;
+      for (var i=0;i<this.full_log.length;i++){
+        if (ultimo_ora!=0 && (ultimo_ora-this.full_log[i].ora)>10000)
+          win.document.body.innerHTML += "<br>";
+    
+        d = new Date(this.full_log[i].ora);
+        win.document.body.innerHTML += d.getHours()+":"+(d.getMinutes()<10?"0"+d.getMinutes():d.getMinutes())+" ";
+        win.document.body.innerHTML += "<b>"+this.full_log[i].txt+"<b>";
+        for (let k in this.full_log[i].tags){
+          win.document.body.innerHTML += " <span style='background:green;color:white'>"+this.full_log[i].tags[k]+"</span>";
+        }
+        win.document.body.innerHTML += "<br><br>";
+        ultimo_ora = this.full_log[i].ora;
       }
-      win.document.body.innerHTML += "<br><br>";
-      ultimo_ora = this.full_log[i].ora;
     }
   }
 
-  mirror_console(log_container: HTMLElement) {
-    if (typeof log_container==="string")
+  mirror_console(log_container: HTMLElement | null) {
+    if (typeof log_container === "string")
       log_container = document.getElementById(log_container);
     console.log = (function (old_function, div_log) {
       return function (text) {
         old_function.apply(this, arguments);
-        div_log.innerHTML += "Log: "+String(text).replace(/\n/g,"<br>")+"<br><br>";
+        if (div_log) {
+          div_log.innerHTML += "Log: "+String(text).replace(/\n/g,"<br>")+"<br><br>";
+        }
         //alert("Log:\n"+text);
       };
     } (console.log.bind(console), log_container));
@@ -91,7 +108,9 @@ class debug {
     console.error = (function (old_function, div_log) {
       return function (text) {
         old_function(text);
-        div_log.innerHTML += "<span style='color:red'>Error: "+String(text).replace(/\n/g,"<br>")+"</span><br><br>";
+        if (div_log) {
+          div_log.innerHTML += "<span style='color:red'>Error: "+String(text).replace(/\n/g,"<br>")+"</span><br><br>";
+        }
         //alert("Error:\n"+text);
       };
     } (console.error.bind(console), log_container));
@@ -99,7 +118,9 @@ class debug {
     console.warn = (function (old_function, div_log) {
       return function (text) {
         old_function(text);
-        div_log.innerHTML += "<span style='color:orange'>Warning: "+String(text).replace(/\n/g,"<br>")+"</span><br><br>";
+        if (div_log) {
+          div_log.innerHTML += "<span style='color:orange'>Warning: "+String(text).replace(/\n/g,"<br>")+"</span><br><br>";
+        }
         //alert("Warning:\n"+text);
       };
     } (console.warn.bind(console), log_container));
@@ -107,13 +128,15 @@ class debug {
     console.info = (function (old_function, div_log) {
       return function (text) {
         old_function(text);
-        div_log.innerHTML += "<span style='color:blue'>Info: "+String(text).replace(/\n/g,"<br>")+"</span><br><br>";
+        if (div_log) {
+          div_log.innerHTML += "<span style='color:blue'>Info: "+String(text).replace(/\n/g,"<br>")+"</span><br><br>";
+        }
         //alert("Info:\n"+text);
       };
     } (console.info.bind(console), log_container));
   
     window.addEventListener("error", handleError, true);
-    function handleError(evt) {
+    function handleError(evt: ErrorEvent) {
       if (this.touch_debug) {
         if (evt.message) { // Chrome sometimes provides this
           alert("error: " + evt.message + " at linenumber: " + evt.lineno + " of file: " + evt.filename);
