@@ -27,7 +27,7 @@ class iDB {
   std_primaryKey = "id";//Jeg er stadig ikke sikker på hvordan man læser denne værdi dynamis
 
   constructor() {
-    if (!indexedDB) {
+    if (typeof indexedDB === "undefined") {
       this.compat = false;
       debug.warn("Your browser doesn't support a stable version of IndexedDB.", "iDB");
     }
