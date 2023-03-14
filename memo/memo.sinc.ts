@@ -1,8 +1,9 @@
+/* Doesn't work because of this circular import to memobase.ts */
 import Memo, {tUPDATE_TIPO, UPDATE_TIPO} from './memo'
 
 const is_web_worker = typeof window === "undefined";
 
-export default class MemoSinc extends Memo {
+export default class MemoSinc { // Circular import - fix it
   storage_chiave = "memo_sinc";
   sinc_stato: any = {};
   sinc_global_stato: {[key: string]: any} = {};
@@ -15,7 +16,7 @@ export default class MemoSinc extends Memo {
   max_fetch_interval = 20000;
 
   constructor(nome_db: string, nomi_tabelle: string[], indexes: Array<Array<string>>) {
-    super(nome_db, nomi_tabelle, indexes);
+    // super(nome_db, nomi_tabelle, indexes);
 
     if (!is_web_worker) {
       this.init_sinc(nome_db);
