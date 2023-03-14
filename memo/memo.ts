@@ -275,12 +275,18 @@ export default class Memo {
    * @param  {function} suFinito viene esseguito quando ha finito
    * @return {Promise}          un promise
    */
-  static ajax(url: string, post_vars: string, suFinito?: (response: string, xhr: XMLHttpRequest) => void) {
+  static ajax(url: string, post_vars: string, headers?: {[name:string]:string}, suFinito?: (response: string, xhr: XMLHttpRequest) => void) {
     return new Promise(function (resolve: (response: string, xhr: XMLHttpRequest) => unknown, reject: (status: number, xhr: XMLHttpRequest) => unknown) {
 
       var xhr = new XMLHttpRequest();
       xhr.open((post_vars ? "POST" : "GET"), url, true);
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      
+      if (headers) {
+        for (let name in headers) {
+          xhr.setRequestHeader(name, headers[name]);
+        }
+      }
 
       xhr.onreadystatechange = function () {
         // NB. this is xhr
@@ -333,6 +339,7 @@ export class MemoSinc extends Memo { // Circular import - fix it
   fetch_interval = 1000;
   min_fetch_interval = 200;
   max_fetch_interval = 20000;
+  public access_token = "";
   public endpoint = "/memo/api/sinc.php";
 
   constructor(nome_db: string, nomi_tabelle: string[], indexes: Array<Array<string>>) {
@@ -353,7 +360,7 @@ export class MemoSinc extends Memo { // Circular import - fix it
     this.sinc_comunica();
   }
 
-  pausa_sinc(pausa: boolean) {
+  pausa_sinc(pausa?: boolean) {
     this.sinc.inpausa = typeof pausa !== "undefined" ? !!pausa : true;
   }
   riprendi_sinc() {
@@ -419,8 +426,9 @@ export class MemoSinc extends Memo { // Circular import - fix it
     /* console.log("comunica col server", this.sinc_stato.camb_aspettanti); */
     const post = "memo_cambs=" + encodeURIComponent(JSON.stringify(this.sinc_stato.camb_aspettanti));
     const ultimo_update = this.sinc_stato.ultimo_update || 0;
-    const url = "https://dechiffre.dk/memo/api/sinc.php?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
-    Memo.ajax(url, post).then((responseText) => {
+    const header = this.access_token ? {"Authorization": `Bearer ${this.access_token}`} : undefined;
+    const url = "https://dechiffre.dk" + (this.sinc.endpoint || "/memo/api/sinc.php") + "?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
+    Memo.ajax(url, post, header).then((responseText) => {
       if (responseText.substring(0,7)==="Errore:"){
         this.errore("Memo.sinc_comunica() " + responseText);
         this.sinc_comu_err();
@@ -500,7 +508,7 @@ export class MemoSinc extends Memo { // Circular import - fix it
         return false;
       }
   
-      Memo.prototype.sinc.num_in_coda++;
+      this.sinc.num_in_coda++;
   
       valori = this.esegui_before_update(nome_tabella, update_tipo, valori);
   
