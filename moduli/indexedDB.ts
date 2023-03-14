@@ -230,7 +230,7 @@ class iDB {
   *  - startinx: number (primary-key index to start at - including that index) default to 1
   *  - limit: number (how many results you want)
   */
-  select(tabella: string, args: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
+  select(tabella: string, args?: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
     args = args ? args : {};
     return new Promise((resolve: (rige: unknown[]) => void, reject) => {
       if (!this.isWorking()) {
@@ -249,7 +249,7 @@ class iDB {
 
       var objectStore = this.db_HDL.transaction([tabella]).objectStore(tabella);
       var request = objectStore;
-      if (args.field) {
+      if (args?.field) {
         try {
           request = objectStore.index(args.field);//Man SKAL have skabt indexet i onversionchange-eventet
         } catch (error) {
@@ -271,22 +271,21 @@ class iDB {
         */
 
       var direction = "next"; // Default
-      if (args.order && args.order.toLowerCase() === "desc")
+      if (args?.order && args.order.toLowerCase() === "desc")
         direction = "prev";//Den bytter om på rækkefølgen, så den sidste bliver den første etc.
 
       var returneringer: Array<unknown> = [];
       var cursorInx = 0;
       request.openCursor(keyRangeValue, direction).onsuccess = function (event: Event) {
-
-        var cursor = request.result;
+        var cursor = event.target.result;
         //Tanke man kan implementere: Til når man kun skal have en bestemt værdi, skal man kun køre til den sidste række med den værdi (fordi det er sorteret efter args.field)
         //Til ideen skal du hoppe til afslutningen og ikke kalde cursor.continue()
-        if (args.limit && returneringer.length >= args.limit) {
+        if (args?.limit && returneringer.length >= args.limit) {
           resolve(returneringer); // Stop med at hente flere rækker
         }
         else if (cursor) {
-          if (typeof args.startinx === "undefined" || cursorInx >= args.startinx) {
-            if (args.valore && args.field) {
+          if (typeof args?.startinx === "undefined" || cursorInx >= args.startinx) {
+            if (args?.valore && args.field) {
               if (cursor.value[args.field] === args.valore)
                 returneringer.push(cursor.value);
             }

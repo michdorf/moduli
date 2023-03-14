@@ -168,7 +168,7 @@ class stellaDB {
     })
   }
 
-  select(nome_tabella: string, args: stellaArgs) {
+  select(nome_tabella: string, args?: stellaArgs) {
     return new Promise((resolve: (rige: unknown[]) => void, reject: Function) => {
 
       // Run async
