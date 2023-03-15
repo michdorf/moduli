@@ -32,10 +32,11 @@ export default class Memo {
     this.nome_db = nome_db;
     this.nomi_tabelle = nomi_tabelle;
     const iDBtmp = new iDB();
-    var indexedDB_supportato = iDBtmp.compat;
+    let indexedDB_supportato = iDBtmp.compat;
 
     const me: unknown = this;
-    this.sinc = this.constructor.name === 'MemoSinc' ? me as MemoSinc : new MemoSinc(nome_db, nomi_tabelle, indexes);
+    // Her:
+    this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this);
 
     let suPronto = () => { this.sonoPronto = true; this._esegui_suPronto() };
     if (indexedDB_supportato) {
@@ -162,15 +163,6 @@ export default class Memo {
     }
   }
 
-  impacchetta_camb(nome_tabella: string, riga: any) {
-    nome_tabella = this.pulisci_t_nome(nome_tabella);
-    return {
-      tabella: nome_tabella,
-      dati: encodeURIComponent(JSON.stringify(riga)),
-      ora: Math.round((new Date().getTime()) / 1000)
-    };
-  };
-
   pulisci_t_nome = function (nome_tabella: string) {
     return nome_tabella.replace(/[^0-9a-z]/gi, "");
   };
@@ -272,7 +264,8 @@ export default class Memo {
    * Una funzione ajax fatto per Memo.js
    * @param  {string} url      il url da richiedere
    * @param  {string} post_vars mm
-   * @param  {function} suFinito viene esseguito quando ha finito
+   * @param   {{[name:string]:string} | undefined} headers s
+   * @param  {function | undefined} suFinito viene esseguito quando ha finito
    * @return {Promise}          un promise
    */
   static ajax(url: string, post_vars: string, headers?: {[name:string]:string}, suFinito?: (response: string, xhr: XMLHttpRequest) => void) {
@@ -281,7 +274,7 @@ export default class Memo {
       var xhr = new XMLHttpRequest();
       xhr.open((post_vars ? "POST" : "GET"), url, true);
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-      
+
       if (headers) {
         for (let name in headers) {
           xhr.setRequestHeader(name, headers[name]);
@@ -328,7 +321,8 @@ export default class Memo {
 
 const is_web_worker = typeof window === "undefined";
 
-export class MemoSinc extends Memo { // Circular import - fix it
+export class MemoSinc /* extends Memo */ { // Circular import - fix it
+  memo: Memo;
   storage_chiave = "memo_sinc";
   sinc_stato: any = {};
   sinc_global_stato: {[key: string]: any} = {};
@@ -342,9 +336,10 @@ export class MemoSinc extends Memo { // Circular import - fix it
   public access_token = "";
   public endpoint = "/memo/api/sinc.php";
 
-  constructor(nome_db: string, nomi_tabelle: string[], indexes: Array<Array<string>>) {
-    super(nome_db, nomi_tabelle, indexes);
+  constructor(nome_db: string, memo: Memo) {
+    // super(nome_db, nomi_tabelle, indexes); // her
 
+    this.memo = memo;
     if (!is_web_worker) {
       this.init_sinc(nome_db);
     }
@@ -353,7 +348,7 @@ export class MemoSinc extends Memo { // Circular import - fix it
   init_sinc(nome_db: string) {
     const stato_predef = '{}';
     this.nome_db = nome_db;
-    this.sinc_global_stato = JSON.parse((localStorage.getItem(this.sinc.storage_chiave) || stato_predef));
+    this.sinc_global_stato = JSON.parse((localStorage.getItem(this.storage_chiave) || stato_predef));
     this.sinc_stato = this.sinc_global_stato[this.nome_db] || {};
     this.sinc_stato.camb_aspettanti = this.sinc_stato.camb_aspettanti || [];
 
@@ -361,24 +356,33 @@ export class MemoSinc extends Memo { // Circular import - fix it
   }
 
   pausa_sinc(pausa?: boolean) {
-    this.sinc.inpausa = typeof pausa !== "undefined" ? !!pausa : true;
+    this.inpausa = typeof pausa !== "undefined" ? !!pausa : true;
   }
   riprendi_sinc() {
     this.pausa_sinc(false);
   }
-  
+
+  impacchetta_camb(nome_tabella: string, riga: any) {
+    nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
+    return {
+      tabella: nome_tabella,
+      dati: encodeURIComponent(JSON.stringify(riga)),
+      ora: Math.round((new Date().getTime()) / 1000)
+    };
+  };
+
   sinc_salva_stato() {
-    var stato = {
+    const stato = {
       camb_aspettanti: this.sinc_stato.camb_aspettanti,
       ultimo_update: this.sinc_stato.ultimo_update
     };
     this.sinc_global_stato[this.nome_db] = stato;
     localStorage.setItem(this.storage_chiave, JSON.stringify(this.sinc_global_stato));
   };
-  
+
   /**
    * Registra un cambiamento per l'algoritmo di sinc
-   * @param  {Memo.update_tipo} tipo      [description]
+   * @param  {UPDATE_TIPO} tipo      [description]
    * @param  {String} nome_tabella      [description]
    * @param  {Object} camb_data [description]
    * @return {[type]}           [description]
@@ -386,151 +390,151 @@ export class MemoSinc extends Memo { // Circular import - fix it
   sinc_cambia(tipo: tUPDATE_TIPO, nome_tabella: string, camb_data: unknown) {
     this.sinc_stato.camb_aspettanti.push(this.impacchetta_camb(nome_tabella, camb_data));
     this.sinc_salva_stato();
-  
+
     this.sinc_comunica();
   };
-  
+
   ult_num_camb = -1; // Per il debounce
   sta_comunicando = false;
   sinc_comunica() {
-    if (this.sinc.inpausa) {
+    if (this.inpausa) {
       setTimeout(() => {this.sinc_repeat()}, 5000);
       return;
     }
-    if (this.sinc_stato.camb_aspettanti.length !== this.sinc.ult_num_camb
-        || this.sinc.num_in_coda > 0) {
-  
-      if (this.sinc.num_in_coda) {
+    if (this.sinc_stato.camb_aspettanti.length !== this.ult_num_camb
+        || this.num_in_coda > 0) {
+
+      if (this.num_in_coda) {
         console.warn("Memo.sinc.num_in_coda > 0. Forse Memo.sinc_comunica() viene eseguito troppo spesso");
       }
-  
-      this.sinc.ult_num_camb = this.sinc_stato.camb_aspettanti.length;
-  
-      if (this.sinc.debounce_hdl) {
-        clearTimeout(this.sinc.debounce_hdl);
+
+      this.ult_num_camb = this.sinc_stato.camb_aspettanti.length;
+
+      if (this.debounce_hdl) {
+        clearTimeout(this.debounce_hdl);
       }
-      this.sinc.debounce_hdl = setTimeout(this.sinc_comunica.bind(this), 2000);
-  
+      this.debounce_hdl = setTimeout(this.sinc_comunica.bind(this), 2000);
+
       return;
     }
-  
-    if (this.sinc.sta_comunicando) {
+
+    if (this.sta_comunicando) {
       console.warn("sinc_comunica: Problema: Hai cercato di comunicare, ma Memo.sinc_comunica() sta gia' comunicando.");
       return;
     }
-  
-    this.sinc.sta_comunicando = true;
+
+    this.sta_comunicando = true;
     // Gem hvor mange ændringer, der sendes, så disse kan fjernes, når ajax er fuldført
-    this.sinc.sinc_finoa_inx = this.sinc_stato.camb_aspettanti.length;
-  
+    this.sinc_finoa_inx = this.sinc_stato.camb_aspettanti.length;
+
     /* console.log("comunica col server", this.sinc_stato.camb_aspettanti); */
     const post = "memo_cambs=" + encodeURIComponent(JSON.stringify(this.sinc_stato.camb_aspettanti));
     const ultimo_update = this.sinc_stato.ultimo_update || 0;
     const header = this.access_token ? {"Authorization": `Bearer ${this.access_token}`} : undefined;
-    const url = "https://dechiffre.dk" + (this.sinc.endpoint || "/memo/api/sinc.php") + "?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
+    const url = "https://dechiffre.dk" + (this.endpoint || "/memo/api/sinc.php") + "?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
     Memo.ajax(url, post, header).then((responseText) => {
       if (responseText.substring(0,7)==="Errore:"){
-        this.errore("Memo.sinc_comunica() " + responseText);
+        this.memo.errore("Memo.sinc_comunica() " + responseText);
         this.sinc_comu_err();
         return false;
       }
-  
+
       var data = JSON.parse(responseText); // JSONparseNums(responseText);
       this.sinc_stato.ultimo_update = data.ultimo_update;
       this.sinc_salva_stato();
-  
+
       // Juster fetch interval alt efter antal ændringer
       var num_righe = Object.keys(data.novita).reduce(function (n, key) {
         return n + data.novita[key].length;
       }, 0);
-      this.sinc.fetch_interval = this.fetch_interval * (num_righe ? 0.4 : 1.2);
-      if (this.sinc.fetch_interval > this.sinc.max_fetch_interval) { this.sinc.fetch_interval = this.sinc.max_fetch_interval}
-      if (this.sinc.fetch_interval < this.sinc.min_fetch_interval) { this.sinc.fetch_interval = this.sinc.min_fetch_interval}
-  
+      this.fetch_interval = this.fetch_interval * (num_righe ? 0.4 : 1.2);
+      if (this.fetch_interval > this.max_fetch_interval) { this.fetch_interval = this.max_fetch_interval}
+      if (this.fetch_interval < this.min_fetch_interval) { this.fetch_interval = this.min_fetch_interval}
+
       var righe = [], i;
       for (let nome_tabella in data.novita) {
-  
+
         righe = data.novita[nome_tabella];
-  
+
         for (i = 0; i < righe.length; i++) {
-  
+
           if (righe[i].eliminatoil === 0) {
             delete righe[i].eliminatoil;
           } else if (righe[i].eliminatoil) {
             console.info("Synker ikke fordi den er slettet (memo.js)", righe[i]);
             continue;
           }
-  
+
           this.sinc_dati_server(nome_tabella, righe[i]);
         }
       }
-  
+
       // Clean up and reset
-      this.sinc_stato.camb_aspettanti.splice(0, this.sinc.sinc_finoa_inx);
-      this.sinc.ult_num_camb = -1;
+      this.sinc_stato.camb_aspettanti.splice(0, this.sinc_finoa_inx);
+      this.ult_num_camb = -1;
       this.sinc_salva_stato();
-  
+
       if (!num_righe) { // num_righe = numero totale di tutte tabelle
         this.sinc_repeat();
       }
-  
+
       /* console.log("From comunica: ", data); */
-      this.sinc.sta_comunicando = false;
+      this.sta_comunicando = false;
     })
     .catch((err_stato) => {
       this.sinc_comu_err();
       if (err_stato !== 0) {
-        this.errore("Memo.sinc.comunica() ajax error status: " + err_stato);
+        this.memo.errore("Memo.sinc.comunica() ajax error status: " + err_stato);
       }
     });
   };
-  
+
   num_in_coda = 0;
   sinc_dati_server(nome_tabella: string, valori: any) {
     delete valori.id; // Brug ikke serverens id-værdi!
-  
-    nome_tabella = this.pulisci_t_nome(nome_tabella);
-  
-    this.seleziona(nome_tabella, {
-      field: this.unico_chiave,
-      valore: valori[this.unico_chiave]
+
+    nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
+
+    this.memo.seleziona(nome_tabella, {
+      field: this.memo.unico_chiave,
+      valore: valori[this.memo.unico_chiave]
     }).then((righe: any) => {
       /* console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori); */
-  
+
       var update_tipo;
       if (righe.length === 0) {
         update_tipo = UPDATE_TIPO.INSERIMENTO;
       } else if (righe.length === 1) {
         update_tipo = UPDATE_TIPO.UPDATE;
       } else {
-        var msg = "memo ha trovato piu righe con " + this.unico_chiave + " = '" + valori[this.unico_chiave] + "'";
+        var msg = "memo ha trovato piu righe con " + this.memo.unico_chiave + " = '" + valori[this.memo.unico_chiave] + "'";
         console.error(msg);
         return false;
       }
-  
-      this.sinc.num_in_coda++;
-  
-      valori = this.esegui_before_update(nome_tabella, update_tipo, valori);
-  
+
+      this.num_in_coda++;
+
+      valori = this.memo.esegui_before_update(nome_tabella, update_tipo, valori);
+
       if (update_tipo === UPDATE_TIPO.INSERIMENTO) {
-        this.db.inserisci(nome_tabella, valori).then(() => {
-          this.esegui_dopo_update(nome_tabella, "inserisci", valori);
-          this.esegui_senti(nome_tabella, "inserisci", valori);
+        this.memo.db.inserisci(nome_tabella, valori).then(() => {
+          this.memo.esegui_dopo_update(nome_tabella, "inserisci", valori);
+          this.memo.esegui_senti(nome_tabella, "inserisci", valori);
           this.sinc_decrease_n_repeat();
         });
       }
-  
+
       if (update_tipo === UPDATE_TIPO.UPDATE) {
-        this.db.update(nome_tabella, righe[0].id, valori).then(() => {
-          this.esegui_dopo_update(nome_tabella, "update", valori);
-          this.esegui_senti(nome_tabella, "update", valori);
+        this.memo.db.update(nome_tabella, righe[0].id, valori).then(() => {
+          this.memo.esegui_dopo_update(nome_tabella, "update", valori);
+          this.memo.esegui_senti(nome_tabella, "update", valori);
           this.sinc_decrease_n_repeat();
         });
       }
-  
+
     });
   };
-  
+
   /**
    * Quando la comunicazione non e' riuscita
    * @return {[type]} [description]
@@ -541,9 +545,9 @@ export class MemoSinc extends Memo { // Circular import - fix it
     setTimeout(() => {
       this.pausa_sinc(false);
     }, 30000);
-    this.sinc.sta_comunicando = false;
+    this.sta_comunicando = false;
   };
-  
+
   /**
    * Hver gang et input fra serveren er gemt skal man tælle ned
    * indtil der ikke er flere ændringer i kø,
@@ -551,23 +555,23 @@ export class MemoSinc extends Memo { // Circular import - fix it
    */
   sinc_decrease_n_repeat(non_diminuire?: boolean) {
     if (!non_diminuire) {
-      this.sinc.num_in_coda--;
+      this.num_in_coda--;
     }
-  
-    if (this.sinc.num_in_coda < 0) {
-      this.errore("Fatal: sinc_num_in_coda < 0");
+
+    if (this.num_in_coda < 0) {
+      this.memo.errore("Fatal: sinc_num_in_coda < 0");
     }
-    if (this.sinc.num_in_coda === 0) {
+    if (this.num_in_coda === 0) {
       this.sinc_repeat();
     }
   };
   sinc_repeat() {
-    setTimeout(this.sinc_comunica.bind(this), this.sinc.fetch_interval);
+    setTimeout(this.sinc_comunica.bind(this), this.fetch_interval);
   };
-  
+
   sinc_riazzera() {
     this.sinc_stato.ultimo_update = -1;
     this.sinc_stato.camb_aspettanti = [];
-    localStorage.removeItem(this.sinc.storage_chiave);
+    localStorage.removeItem(this.storage_chiave);
   };
 }
