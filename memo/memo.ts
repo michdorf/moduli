@@ -33,9 +33,7 @@ export default class Memo {
     this.nomi_tabelle = nomi_tabelle;
     const iDBtmp = new iDB();
     let indexedDB_supportato = iDBtmp.compat;
-
-    const me: unknown = this;
-    // Her:
+    
     this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this);
 
     let suPronto = () => { this.sonoPronto = true; this._esegui_suPronto() };
