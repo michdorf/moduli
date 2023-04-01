@@ -1,6 +1,7 @@
 import uuid from '../moduli/uuid';
 import iDB, { idbArgs } from '../moduli/indexedDB'
 import stellaDB, { stellaArgs } from '../moduli/stellaDB';
+import IMemoRiga from "./memoriga.interface";
 
 export const UPDATE_TIPO: { [key: string]: tUPDATE_TIPO } = Object.freeze({ UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella" });
 export type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
@@ -167,7 +168,7 @@ export default class Memo {
     return nome_tabella.replace(/[^0-9a-z]/gi, "");
   };
 
-  inserisci = (nome_tabella: string, riga: any, callback: (riga: unknown) => void) => {
+  inserisci = <T extends IMemoRiga>(nome_tabella: string, riga: IMemoRiga, callback?: (riga: unknown) => void) => {
     if (this._esegue_senti) {
       console.error("Non e' una buona idea di eseguire Memo.inserisci() dentro Memo.senti(). Aborta!");
       return;
@@ -202,7 +203,7 @@ export default class Memo {
    * @param valori
    * @returns {*}
    */
-  update(nome_tabella: string, id_unico: string, valori: { [key: string]: string | number }) {
+  update<rigaT extends IMemoRiga>(nome_tabella: string, id_unico: string, valori: rigaT) {
     if (this._esegue_senti) {
       console.error("Non e' una buona idea di eseguire Memo.update() dentro Memo.senti(). Aborta!");
       return;

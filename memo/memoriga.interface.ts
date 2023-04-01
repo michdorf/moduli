@@ -1,4 +1,4 @@
-export default interface IMemoTabella {
+export default interface IMemoRiga {
     id: number;
     UUID: string;
     utente: number;
