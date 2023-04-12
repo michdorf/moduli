@@ -1,9 +1,9 @@
 export default interface IMemoRiga {
-    id: number;
+    id?: number;
     UUID: string;
-    utente: number;
-    eliminatoil: number;
-    cambiati: string; /* ";" delimeter */
-    cambiato: number;
-    creato: number;
+    utente?: number;
+    eliminatoil?: number;
+    cambiati?: string; /* ";" delimeter */
+    cambiato?: number;
+    creato?: number;
 }
