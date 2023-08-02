@@ -165,7 +165,7 @@ export default class Memo {
     return nome_tabella.replace(/[^0-9a-z]/gi, "");
   };
 
-  inserisci = <T extends IMemoRiga>(nome_tabella: string, riga: T, callback?: (riga: unknown) => void) => {
+  inserisci = <T extends IMemoRiga>(nome_tabella: string, riga: T, callback?: (rigaUUID: string) => void) => {
     if (this._esegue_senti) {
       console.error("Non e' una buona idea di eseguire Memo.inserisci() dentro Memo.senti(). Aborta!");
       return;
@@ -176,7 +176,7 @@ export default class Memo {
     }
     riga["UUID"] = this.uuid();
     riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
-    return this.db.inserisci(nome_tabella, riga).then(() => {
+    return this.db.inserisci(nome_tabella, riga).then((ins_id) => {
       this.sinc.sinc_cambia("inserisci", nome_tabella, riga);
       this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
       if (typeof callback === "function") {
@@ -201,12 +201,13 @@ export default class Memo {
    * @returns {*}
    */
   update<rigaT extends IMemoRiga>(nome_tabella: string, id_unico: string, valori: rigaT) {
-    if (this._esegue_senti) {
-      console.error("Non e' una buona idea di eseguire Memo.update() dentro Memo.senti(). Aborta!");
-      return;
-    }
-    nome_tabella = this.pulisci_t_nome(nome_tabella);
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: (UUID: string) => void, reject) => {
+      if (this._esegue_senti) {
+        console.error("Non e' una buona idea di eseguire Memo.update() dentro Memo.senti(). Aborta!");
+        return;
+      }
+      nome_tabella = this.pulisci_t_nome(nome_tabella);
+
       this.seleziona(nome_tabella, {
         field: "UUID",
         valore: id_unico
@@ -217,11 +218,12 @@ export default class Memo {
           return false;
         }
         valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
-        resolve(this.db.update(nome_tabella, (rige[0] as { id: number;[key: string]: unknown }).id, valori).then(() => {
+        this.db.update(nome_tabella, (rige[0] as { id: number;[key: string]: unknown }).id, valori).then(() => {
           valori["UUID"] = id_unico;
           this.sinc.sinc_cambia("update", nome_tabella, valori);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
-        }));
+          resolve(id_unico);
+        });
       });
     });
   };
@@ -353,7 +355,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     this.sinc_comunica();
   }
 
-  pausa_sinc(pausa?: boolean) {
+  pausa_sinc(pausa: boolean = true) {
     this.inpausa = typeof pausa !== "undefined" ? !!pausa : true;
   }
   riprendi_sinc() {

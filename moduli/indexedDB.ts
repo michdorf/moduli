@@ -187,7 +187,7 @@ class iDB {
 
   inserisci(nomeTabella: string, JSON_values: unknown) {
 
-    return new Promise((resolve: (ins_id: number) => void, reject) => {
+    return new Promise((resolve: (ins_inx: number) => void, reject) => {
 
       if (typeof this.db_HDL !== "object") {
         debug.warn("Nessun BancaDati aperto. iDB.inserisci()", "iDB");

@@ -142,7 +142,7 @@ class stellaDB {
    * @param riga - valore per inserire nella riga
    */
   inserisci(nome_tabella: string, riga: any) {
-    return new Promise((resolve: Function, reject: Function) => {
+    return new Promise((resolve: (ins_inx: number) => void, reject: Function) => {
       if (!this.essisteTabella(nome_tabella)) {
         reject(new Error("Tabella " + nome_tabella + " non essiste"));
         return false;
@@ -164,7 +164,7 @@ class stellaDB {
 
       tabella.push(riga); // tabella peger på stellaDB.db_cache
       localStorage[tabellaKey] = JSON.stringify(tabella);
-      resolve(ins_inx, riga);
+      resolve(ins_inx);
     })
   }
 
