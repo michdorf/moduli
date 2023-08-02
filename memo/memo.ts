@@ -36,7 +36,7 @@ export default class Memo {
     
     this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this);
 
-    let suPronto = () => { this.sonoPronto = true; this._esegui_suPronto() };
+    let suPronto = () => { this.sonoPronto = true; this._sono_pronto() };
     if (indexedDB_supportato) {
       this.db = new iDB();
       this.db.apri(this.nome_db).then(() => { this.iniz_tabelle(nomi_tabelle, suPronto, indexes) });
@@ -65,12 +65,18 @@ export default class Memo {
 
   // NB. suPronto kaldes ikke, hvis nomi_tabelle.length === 0. Det kan fikses i iniz_tabelle()
   suPronto(funz: () => void) {
-    this._esegui_suPronto = funz;
+    this._esegui_suPronto.push(funz);
     if (this.sonoPronto) {
       funz();
     }
   }
-  _esegui_suPronto = function () { console.log("Memo e' pronto #stockfunz") }
+  _esegui_suPronto = <Array<() => void>>[];
+  /**
+   * Runs all functions added as listeners
+   */
+  _sono_pronto() {
+    this._esegui_suPronto.forEach(funz => funz());
+  }
 
   $before_update: tUpdateListeners = [];
   /**
