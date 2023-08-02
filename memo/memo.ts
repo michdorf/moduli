@@ -25,7 +25,6 @@ export default class Memo {
   sinc: MemoSinc;
   nome_db = "";
   nomi_tabelle: string[];
-  unico_chiave = "UUID";
   sonoPronto = false;
   uuid = uuid; // Funzione per creare identificativo unico
 
@@ -166,22 +165,22 @@ export default class Memo {
     return nome_tabella.replace(/[^0-9a-z]/gi, "");
   };
 
-  inserisci = <T extends IMemoRiga>(nome_tabella: string, riga: IMemoRiga, callback?: (riga: unknown) => void) => {
+  inserisci = <T extends IMemoRiga>(nome_tabella: string, riga: T, callback?: (riga: unknown) => void) => {
     if (this._esegue_senti) {
       console.error("Non e' una buona idea di eseguire Memo.inserisci() dentro Memo.senti(). Aborta!");
       return;
     }
     nome_tabella = this.pulisci_t_nome(nome_tabella);
-    if (riga.hasOwnProperty(this.unico_chiave) && riga[this.unico_chiave]) {
+    if (riga.hasOwnProperty("UUID") && riga["UUID"]) {
       console.warn("Per cortesia lascia a memo.js a creare un UUID");
     }
-    riga[this.unico_chiave] = this.uuid();
+    riga["UUID"] = this.uuid();
     riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
     return this.db.inserisci(nome_tabella, riga).then(() => {
       this.sinc.sinc_cambia("inserisci", nome_tabella, riga);
       this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
       if (typeof callback === "function") {
-        callback(riga[this.unico_chiave]);
+        callback(riga["UUID"]);
       }
     });
   };
@@ -209,17 +208,17 @@ export default class Memo {
     nome_tabella = this.pulisci_t_nome(nome_tabella);
     return new Promise((resolve, reject) => {
       this.seleziona(nome_tabella, {
-        field: this.unico_chiave,
+        field: "UUID",
         valore: id_unico
       }).then((rige: unknown[]) => {
         if (rige.length > 1) {
-          this.errore("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
-          reject("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
+          this.errore("memo ha trovato piu rige con " + "UUID" + " = '" + id_unico + "'");
+          reject("memo ha trovato piu rige con " + "UUID" + " = '" + id_unico + "'");
           return false;
         }
         valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
         resolve(this.db.update(nome_tabella, (rige[0] as { id: number;[key: string]: unknown }).id, valori).then(() => {
-          valori[this.unico_chiave] = id_unico;
+          valori["UUID"] = id_unico;
           this.sinc.sinc_cambia("update", nome_tabella, valori);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
         }));
@@ -241,17 +240,17 @@ export default class Memo {
     nome_tabella = this.pulisci_t_nome(nome_tabella);
     return new Promise((resolve, reject) => {
       this.seleziona(nome_tabella, {
-        field: this.unico_chiave,
+        field: "UUID",
         valore: id_unico
       }).then((rige: any) => {
         if (rige.length > 1) {
-          this.errore("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
-          reject("memo ha trovato piu rige con " + this.unico_chiave + " = '" + id_unico + "'");
+          this.errore("memo ha trovato piu rige con " + "UUID" + " = '" + id_unico + "'");
+          reject("memo ha trovato piu rige con " + "UUID" + " = '" + id_unico + "'");
           return false;
         }
         resolve(this.db.cancella(nome_tabella, rige[0].id).then(() => {
           let valori: { [key: string]: string | number } = {};
-          valori[this.unico_chiave] = id_unico;
+          valori["UUID"] = id_unico;
           this.sinc.sinc_cambia("update", nome_tabella, valori);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
         }));
@@ -412,7 +411,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       if (this.debounce_hdl) {
         clearTimeout(this.debounce_hdl);
       }
-      this.debounce_hdl = setTimeout(this.sinc_comunica.bind(this), 2000);
+      this.debounce_hdl = window.setTimeout(this.sinc_comunica.bind(this), 2000);
 
       return;
     }
@@ -495,8 +494,8 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
 
     this.memo.seleziona(nome_tabella, {
-      field: this.memo.unico_chiave,
-      valore: valori[this.memo.unico_chiave]
+      field: "UUID",
+      valore: valori["UUID"]
     }).then((righe: any) => {
       /* console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori); */
 
@@ -506,7 +505,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       } else if (righe.length === 1) {
         update_tipo = UPDATE_TIPO.UPDATE;
       } else {
-        var msg = "memo ha trovato piu righe con " + this.memo.unico_chiave + " = '" + valori[this.memo.unico_chiave] + "'";
+        var msg = "memo ha trovato piu righe con " + "UUID" + " = '" + valori["UUID"] + "'";
         console.error(msg);
         return false;
       }
