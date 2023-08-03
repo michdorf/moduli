@@ -171,7 +171,7 @@ export default class Memo {
     return nome_tabella.replace(/[^0-9a-z]/gi, "");
   };
 
-  inserisci = <T extends IMemoRiga>(nome_tabella: string, riga: T, callback?: (rigaUUID: string) => void) => {
+  inserisci = <T extends IMemoRiga & {UUID: string | undefined}>(nome_tabella: string, riga: T, callback?: (rigaUUID: string) => void) => {
     if (this._esegue_senti) {
       console.error("Non e' una buona idea di eseguire Memo.inserisci() dentro Memo.senti(). Aborta!");
       return;
