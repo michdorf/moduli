@@ -48,11 +48,11 @@ export default class Memo {
     }
   }
 
-  iniz_tabelle(nomi_tabelle: string[], suFinito: () => void, indexes?: string[][] | undefined) {
+  async iniz_tabelle(nomi_tabelle: string[], suFinito: () => void, indexes?: string[][] | undefined) {
     let n_finiti = 0;
     nomi_tabelle = typeof nomi_tabelle !== "undefined" ? nomi_tabelle : [];
     for (var i = 0; i < nomi_tabelle.length; i++) {
-      this.autocrea_tabella(nomi_tabelle[i], () => {
+      await this.autocrea_tabella(nomi_tabelle[i], () => {
         n_finiti++;
         if (n_finiti === nomi_tabelle.length) {
           suFinito();
@@ -151,7 +151,7 @@ export default class Memo {
     return riga;
   }
 
-  autocrea_tabella(nome_tabella: string, suFinito: () => void, indexes: string[] | undefined) {
+  async autocrea_tabella(nome_tabella: string, suFinito: () => void, indexes: string[] | undefined) {
     suFinito = typeof suFinito === "function" ? suFinito : function () { };
     indexes = Array.isArray(indexes) ? indexes : [];
     nome_tabella = this.pulisci_t_nome(nome_tabella);
@@ -160,7 +160,7 @@ export default class Memo {
         (this.db as stellaDB).creaTabella(nome_tabella, nome_tabella);
         suFinito();
       } else { // indexedDB
-        (this.db as iDB).creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
+        await (this.db as iDB).creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
           suFinito();
         });
       }
