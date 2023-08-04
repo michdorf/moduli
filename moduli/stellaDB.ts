@@ -44,6 +44,10 @@ class stellaDB {
 
   constructor(db_nome: string) {
 
+    if (typeof window === "undefined") {
+      return;
+    }
+    
     if (this.maxSpazio === undefined) {
       var maxSpazioKey = this.storagePrefisso + "max_spazio";
 
@@ -375,6 +379,9 @@ class stellaDB {
    * @returns {object} db_stat - impstazioni della db
    */
   get_db_stat(db_nome: string) {
+    if (typeof window === "undefined") {
+      return; // SSR, server or worker
+    }
     if (!db_nome) {
       return new Error("Devi specificare db_nome");
     }

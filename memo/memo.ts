@@ -42,7 +42,9 @@ export default class Memo {
       this.db.apri(this.nome_db).then(() => { this.iniz_tabelle(nomi_tabelle, suPronto, indexes) });
     } else {
       this.db = new stellaDB(this.nome_db);
-      this.iniz_tabelle.bind(this)(nomi_tabelle, suPronto, indexes);
+      if (typeof window !== "undefined") {
+        this.iniz_tabelle.bind(this)(nomi_tabelle, suPronto, indexes);
+      }
     }
   }
 
