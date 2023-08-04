@@ -95,44 +95,34 @@ class iDB {
   // JSON_args.databasenavn
   // JSON_args.tabelle
   // JSON_args.index
-  creaBanca(JSON_args: idbArgs) {
+  creaBanca(args: idbArgs): Promise<string>{
     if (this.compat === false) {
       debug.error("Non è riuscito a creare la tabella. (Il browser non è compattibile)  - iDB.creaTabella()", "iDB");
       throw new Error("Non è riuscito a creare la tabella. (Il browser non è compattibile) - iDB.creaTabella()");
     }
 
-    this.db_nome = JSON_args.databasenavn ? JSON_args.databasenavn : this.db_nome;
-    var primary_key = JSON_args.primary_key ? JSON_args.primary_key : this.primary_key(this.db_nome, "tabella");
-    if (typeof JSON_args.callBackFunc !== "undefined")
-      debug.warn("JSON_args.callBackFunc non funziona piu in iDB.creaTabella(). Usa .then()", "iDB");
-
-    var promise = new Promise((resolve: (v: string) => void, reject: (v: Error) => void) => {
-
-      if (typeof JSON_args.tabelle === "undefined") {
-        reject(new Error("Devi specificare JSON_args.tabelle in iDB.creaTabella()"));
-        return false;
+    return new Promise((resolve, reject) => {
+      if (!this.compat) {
+        reject(new Error("The browser is not compatible with IndexedDB."));
+        return;
       }
 
-      var request: IDBOpenDBRequest;
-      if (typeof this.db_HDL === "object") {
-        this.db_HDL.close();//Se vuoi fare l'upgrade deve essere chiuso
-        var db_versione = parseInt(this.db_HDL.version) + 1;
-        //Man skal bruge databasen version (2nd argument) og forøge det for at trigge onupgradeneeded, som er det eneste sted, man kan skabe en tabel
-        request = indexedDB.open(this.db_nome, db_versione);
-        //Versionen kan i onsucces-eventen som parseInt(db.version) - se skabNyTabel()
-      } else {
-        debug.info("Forse la tabella non viene creata. Non è possibile incrementare la versione.\niDB.creaBanca()", "iDB");
-        request = indexedDB.open(this.db_nome);
+      const dbName = args.databasenavn || this.db_nome;
+      const primary_key = args.primary_key || this.primary_key(this.db_nome, "tabella");
+
+      if (!args.tabelle) {
+        reject(new Error("You must specify 'tabelle' in the arguments."));
+        return;
       }
 
-      request.onerror = function (event) {
-        debug.log("error: med at requeste", "iDB");
-        reject(new Error("error: med at requeste"));
+      const request = indexedDB.open(dbName);
+      
+      request.onerror = () => {
+        reject(new Error("An error occurred while requesting."));
       };
-
+      
       request.onsuccess = () => {
         this.db_HDL = request.result;
-        //debug.log("success: "+ iDB.db_HDL,"iDB");
         resolve("success");
       };
 
@@ -140,32 +130,22 @@ class iDB {
         // @ts-ignore jf. https://developer.mozilla.org/en-US/docs/Web/API/IDBOpenDBRequest/upgradeneeded_event
         this.db_HDL = event.target.result;
 
-        var indexer;
-        var tabelle = makeArray(JSON_args.tabelle);
-        if (JSON_args.index)
-          indexer = makeArray(JSON_args.index);
-        else
-          indexer = [];
+        const tables = Array.isArray(args.tabelle) ? args.tabelle : [args.tabelle];
+        const indexes = Array.isArray(args.index) ? args.index : [];
 
-        //Skab tabellerne, der skal bruges
-        var i, j;
-        for (i = 0; i < tabelle.length; i++) {
-          //tabeller array af keys med en SQL syntax som: "brugere(id int unique,navn varchar(255),...)
-          tabelle[i] = tabelle[i];
-          var objectStore = this.db_HDL.createObjectStore(tabelle[i], { keyPath: primary_key, autoIncrement: true });
-          j = 0;
-          while ((indexer) && (indexer[i]) && (typeof indexer[i][j] !== "undefined")) {
-            objectStore.createIndex(indexer[i][j], indexer[i][j], { unique: false });// (objectIndexName,objectKeypath, optionalObjectParameters)
-            j++;
+        for (let i = 0; i < tables.length; i++) {
+          const objectStore = this.db_HDL.createObjectStore(tables[i], { keyPath: primary_key, autoIncrement: true });
+          
+          if (indexes[i]) {
+            for (const indexKey of indexes[i]) {
+              objectStore.createIndex(indexKey, indexKey, { unique: false });
+            }
           }
         }
-        debug.log("database upgraderet", "iDB");
+
         resolve("upgraded");
       };
-
-    });//Fine del promise
-
-    return promise;
+    });
   }
 
   //Lo stesso a iDB.creaBanca - ma un nome diverso
