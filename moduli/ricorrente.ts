@@ -48,8 +48,12 @@ export default class Ricorrente implements RicorrenteT {
         }
     }
 
-    static prossima(ricorrente: Ricorrente, offset?: Date): Date {
+    static prossima(ricorrente: Ricorrente | RicorrenteJSONT, offset?: Date): Date {
         const oggi = offset ? /*clone*/new Date(offset.getTime()) : new Date();
+        if (typeof ricorrente.primoGiorno === "string") {
+            ricorrente = this.daJSON(ricorrente as RicorrenteJSONT);
+        }
+        ricorrente = ricorrente as Ricorrente;
         oggi.setHours(0,0,0,0);
         switch (ricorrente.intervallo) {
             case "g": {
