@@ -127,12 +127,6 @@ class iDB {
         reject(new Error("error: med at requeste"));
       };
 
-      request.onsuccess = () => {
-        this.db_HDL = request.result;
-        //debug.log("success: "+ iDB.db_HDL,"iDB");
-        resolve("success");
-      };
-
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         // @ts-ignore jf. https://developer.mozilla.org/en-US/docs/Web/API/IDBOpenDBRequest/upgradeneeded_event
         this.db_HDL = event.target.result;
@@ -157,7 +151,12 @@ class iDB {
           }
         }
         debug.log("database upgraderet", "iDB");
-        resolve("upgraded");
+        // resolve("upgraded"); // On each table creation?
+      };
+
+      request.onsuccess = () => {
+        this.db_HDL = request.result;
+        resolve("success"); // After upgrade of database
       };
 
     });//Fine del promise
