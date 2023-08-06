@@ -16,7 +16,7 @@ if (typeof window !== "undefined" && !('IDBKeyRange' in window)) {
 }
 
 type CampoTipi = string | number;
-export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][], callBackFunc?: () => void};
+export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][]};
 
 class iDB {
   macchina = "indexedDB";
@@ -96,15 +96,11 @@ class iDB {
   // JSON_args.tabelle
   // JSON_args.index
   creaBanca(args: idbArgs): Promise<string>{
-    if (this.compat === false) {
-      debug.error("Non è riuscito a creare la tabella. (Il browser non è compattibile)  - iDB.creaTabella()", "iDB");
-      throw new Error("Non è riuscito a creare la tabella. (Il browser non è compattibile) - iDB.creaTabella()");
-    }
-
     return new Promise((resolve, reject) => {
-      if (!this.compat) {
-        reject(new Error("The browser is not compatible with IndexedDB."));
-        return;
+      if (this.compat === false) {
+        debug.error("Non è riuscito a creare la tabella. (Il browser non è compattibile)  - iDB.creaTabella()", "iDB");
+        reject("Non è riuscito a creare la tabella. (Il browser non è compattibile) - iDB.creaTabella()");
+        throw new Error("Non è riuscito a creare la tabella. (Il browser non è compattibile) - iDB.creaTabella()");
       }
 
       const dbName = args.databasenavn || this.db_nome;
