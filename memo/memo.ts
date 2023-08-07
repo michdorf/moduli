@@ -10,7 +10,7 @@ interface iUpdateListener {
   funz: tUpdateFunz;
 }
 type tUpdateListeners = Array<iUpdateListener>;
-type tUpdateFunz = (tipo: tUPDATE_TIPO, riga: any) => any;
+type tUpdateFunz = (tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) => any;
 type suErroreFunz = (msg: string) => void;
 
 /**
@@ -92,11 +92,11 @@ export default class Memo {
       this.$before_update.push({ nome_tabella: nome_tabella, funz: funz });
     }
   };
-  esegui_before_update(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any) {
+  esegui_before_update(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) {
     for (var i = 0; i < this.$before_update.length; i++) {
       var m = this.$before_update[i], r;
       if (m.nome_tabella === nome_tabella) {
-        r = m.funz(tipo, riga);
+        r = m.funz(tipo, riga, dalServer);
         if (r) {
           riga = r; // Update riga med nyeste ændringer
         }
@@ -119,14 +119,14 @@ export default class Memo {
     });
   }
   $dopo_update: tUpdateListeners = [];
-  esegui_dopo_update(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any) {
-    this.esegui_funzioni(this.$dopo_update, nome_tabella, tipo, riga);
+  esegui_dopo_update(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) {
+    this.esegui_funzioni(this.$dopo_update, nome_tabella, tipo, riga, dalServer);
   }
-  esegui_funzioni(funz_arr: tUpdateListeners, nome_tabella: string, tipo: tUPDATE_TIPO, riga: any) {
+  esegui_funzioni(funz_arr: tUpdateListeners, nome_tabella: string, tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) {
     for (var i = 0; i < funz_arr.length; i++) {
       var m = funz_arr[i], r;
       if (m.nome_tabella === nome_tabella) {
-        m.funz(tipo, riga);
+        m.funz(tipo, riga, dalServer);
       }
     }
 
@@ -145,7 +145,7 @@ export default class Memo {
   esegui_senti(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any) {
     this._esegue_senti = true;
 
-    this.esegui_funzioni(this.$senti_funz, nome_tabella, tipo, riga);
+    this.esegui_funzioni(this.$senti_funz, nome_tabella, tipo, riga, true);
 
     this._esegue_senti = false;
     return riga;
@@ -183,10 +183,10 @@ export default class Memo {
       console.warn("Per cortesia lascia a memo.js a creare un UUID");
     }
     riga["UUID"] = this.uuid();
-    riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
+    riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
     return this.db.inserisci(nome_tabella, riga).then((ins_id) => {
       this.sinc.sinc_cambia("inserisci", nome_tabella, riga);
-      this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga);
+      this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
       if (typeof callback === "function") {
         callback(riga["UUID"]);
       }
@@ -225,11 +225,11 @@ export default class Memo {
           reject("memo ha trovato piu rige con " + "UUID" + " = '" + id_unico + "'");
           return false;
         }
-        valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
+        valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
         this.db.update(nome_tabella, (rige[0] as { id: number;[key: string]: unknown }).id, valori).then(() => {
           valori["UUID"] = id_unico;
           this.sinc.sinc_cambia("update", nome_tabella, valori);
-          this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
+          this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
           resolve(id_unico);
         });
       });
@@ -262,7 +262,7 @@ export default class Memo {
           let valori: { [key: string]: string | number } = {};
           valori["UUID"] = id_unico;
           this.sinc.sinc_cambia("update", nome_tabella, valori);
-          this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori);
+          this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
         }));
       });
     });
@@ -522,11 +522,11 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
 
       this.num_in_coda++;
 
-      valori = this.memo.esegui_before_update(nome_tabella, update_tipo, valori);
+      valori = this.memo.esegui_before_update(nome_tabella, update_tipo, valori, true);
 
       if (update_tipo === UPDATE_TIPO.INSERIMENTO) {
         this.memo.db.inserisci(nome_tabella, valori).then(() => {
-          this.memo.esegui_dopo_update(nome_tabella, "inserisci", valori);
+          this.memo.esegui_dopo_update(nome_tabella, "inserisci", valori, true);
           this.memo.esegui_senti(nome_tabella, "inserisci", valori);
           this.sinc_decrease_n_repeat();
         });
@@ -534,7 +534,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
 
       if (update_tipo === UPDATE_TIPO.UPDATE) {
         this.memo.db.update(nome_tabella, righe[0].id, valori).then(() => {
-          this.memo.esegui_dopo_update(nome_tabella, "update", valori);
+          this.memo.esegui_dopo_update(nome_tabella, "update", valori, true);
           this.memo.esegui_senti(nome_tabella, "update", valori);
           this.sinc_decrease_n_repeat();
         });
