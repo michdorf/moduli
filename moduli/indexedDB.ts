@@ -430,7 +430,7 @@ class iDB {
   * Funzione d'aiuto per creare una transazione
   */
   apriTabella(nometabella: string) {
-    var nome_funz = this.apriTabella.caller ? this.apriTabella.caller.name : "iDB.apriTabella";
+    var nome_funz = "iDB.apriTabella";
 
     if (nometabella === undefined) {
       throw new Error("nometabella er ikke sat i iDB." + nome_funz + "()");
