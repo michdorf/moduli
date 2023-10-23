@@ -237,18 +237,20 @@ export default class Memo {
   };
 
   /**
-   *
+   * Elimina una riga
    * @param nome_tabella
    * @param id_unico - UUID
    * @returns {*}
    */
   cancella(nome_tabella: string, id_unico: string) {
-    if (this._esegue_senti) {
-      console.error("Non e' una buona idea di eseguire Memo.cancella() dentro Memo.senti(). Aborta!");
-      return;
-    }
-    nome_tabella = this.pulisci_t_nome(nome_tabella);
     return new Promise((resolve, reject) => {
+      if (this._esegue_senti) {
+        reject("Non e' una buona idea di eseguire Memo.cancella() dentro Memo.senti(). Aborta!");
+        console.error("Non e' una buona idea di eseguire Memo.cancella() dentro Memo.senti(). Aborta!");
+        return;
+      }
+      nome_tabella = this.pulisci_t_nome(nome_tabella);
+      
       this.seleziona(nome_tabella, {
         field: "UUID",
         valore: id_unico
@@ -258,12 +260,13 @@ export default class Memo {
           reject("memo ha trovato piu rige con " + "UUID" + " = '" + id_unico + "'");
           return false;
         }
-        resolve(this.db.cancella(nome_tabella, rige[0].id).then(() => {
+        this.db.cancella(nome_tabella, rige[0].id).then(() => {
           let valori: { [key: string]: string | number } = {};
           valori["UUID"] = id_unico;
           this.sinc.sinc_cambia("update", nome_tabella, valori);
+          resolve(id_unico);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
-        }));
+        });
       });
     });
   };

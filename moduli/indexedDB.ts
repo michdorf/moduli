@@ -373,6 +373,12 @@ class iDB {
     return promise;
   };
 
+  /**
+   * Cancella una riga in tabella
+   * @param nometabella 
+   * @param primaryKeyValore 
+   * @returns 
+   */
   cancella(nometabella: string, primaryKeyValore: CampoTipi) {
     return new Promise((resolve, reject) => {
       if (primaryKeyValore === undefined) {

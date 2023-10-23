@@ -270,7 +270,7 @@ class stellaDB {
    * @returns {*}
    */
   cancella(nome_tabella: string, riga_id: number) {
-    return new Promise((resolve, reject) => {
+    return new Promise<number>((resolve, reject) => {
       if (nome_tabella === undefined || riga_id === undefined) {
         reject(new Error("nome_tabella o riga_id valori non definiti"));
         return false;
