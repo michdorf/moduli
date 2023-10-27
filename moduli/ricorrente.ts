@@ -59,7 +59,7 @@ export default class Ricorrente implements RicorrenteT {
             case "g": {
                 const giorni = Math.floor((oggi.getTime() - ricorrente.primoGiorno.getTime())/(1000*60*60*24));
                 let giorniOffset = ricorrente.intervalloN-(giorni % ricorrente.intervalloN);
-                if (giorniOffset === ricorrente.intervalloN) {giorniOffset = 0;}
+                // if (giorniOffset === ricorrente.intervalloN) {giorniOffset = 0;}
                 oggi.setDate(oggi.getDate() + giorniOffset);
                 return oggi;
             }
