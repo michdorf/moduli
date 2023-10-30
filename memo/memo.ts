@@ -263,7 +263,7 @@ export default class Memo {
         this.db.cancella(nome_tabella, rige[0].id).then(() => {
           let valori: { [key: string]: string | number } = {};
           valori["UUID"] = id_unico;
-          this.sinc.sinc_cambia("update", nome_tabella, valori);
+          this.sinc.sinc_cambia("cancella", nome_tabella, valori);
           resolve(id_unico);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
         });
@@ -373,10 +373,11 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     this.pausa_sinc(false);
   }
 
-  impacchetta_camb(nome_tabella: string, riga: any) {
+  impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: any) {
     nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
     return {
       tabella: nome_tabella,
+      updateTipo: tipo,
       dati: encodeURIComponent(JSON.stringify(riga)),
       ora: Math.round((new Date().getTime()) / 1000)
     };
@@ -399,7 +400,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
    * @return {[type]}           [description]
    */
   sinc_cambia(tipo: tUPDATE_TIPO, nome_tabella: string, camb_data: unknown) {
-    this.sinc_stato.camb_aspettanti.push(this.impacchetta_camb(nome_tabella, camb_data));
+    this.sinc_stato.camb_aspettanti.push(this.impacchetta_camb(tipo, nome_tabella, camb_data));
     this.sinc_salva_stato();
 
     this.sinc_comunica();
