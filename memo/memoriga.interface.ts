@@ -1,4 +1,4 @@
-export default interface IMemoRiga {
+type IMemoRiga = {
     id?: number;
     UUID: string;
     utente?: number;
@@ -7,3 +7,4 @@ export default interface IMemoRiga {
     cambiato?: number;
     creato?: number;
 }
+export default IMemoRiga;
