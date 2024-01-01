@@ -514,36 +514,49 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       /* console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori); */
 
       var update_tipo;
-      if (righe.length === 0) {
-        update_tipo = UPDATE_TIPO.INSERIMENTO;
-      } else if (righe.length === 1) {
-        update_tipo = UPDATE_TIPO.UPDATE;
+      if (valori.eliminatoil) {
+        update_tipo = UPDATE_TIPO.CANCELLAZIONE;
       } else {
-        var msg = "memo ha trovato piu righe con " + "UUID" + " = '" + valori["UUID"] + "'";
-        console.error(msg);
-        return false;
+        switch (righe.length) {
+          case 0:
+            update_tipo = UPDATE_TIPO.INSERIMENTO;
+            break;
+          case 1:
+            update_tipo = UPDATE_TIPO.UPDATE;
+            break;
+          default:
+            var msg = "memo ha trovato piu righe con " + "UUID" + " = '" + valori["UUID"] + "'";
+            console.error(msg);
+            return false;
+        }
       }
 
       this.num_in_coda++;
 
       valori = this.memo.esegui_before_update(nome_tabella, update_tipo, valori, true);
 
-      if (update_tipo === UPDATE_TIPO.INSERIMENTO) {
-        this.memo.db.inserisci(nome_tabella, valori).then(() => {
-          this.memo.esegui_dopo_update(nome_tabella, "inserisci", valori, true);
-          this.memo.esegui_senti(nome_tabella, "inserisci", valori);
-          this.sinc_decrease_n_repeat();
-        });
+      switch (update_tipo) {
+        case UPDATE_TIPO.INSERIMENTO:
+          this.memo.db.inserisci(nome_tabella, valori).then(() => {
+            this.memo.esegui_dopo_update(nome_tabella, "inserisci", valori, true);
+            this.memo.esegui_senti(nome_tabella, "inserisci", valori);
+            this.sinc_decrease_n_repeat();
+          });
+          break;
+        case UPDATE_TIPO.UPDATE:
+          this.memo.db.update(nome_tabella, righe[0].id, valori).then(() => {
+            this.memo.esegui_dopo_update(nome_tabella, "update", valori, true);
+            this.memo.esegui_senti(nome_tabella, "update", valori);
+            this.sinc_decrease_n_repeat();
+          });
+          break;
+        case UPDATE_TIPO.CANCELLAZIONE:
+          this.memo.db.cancella(nome_tabella, righe[0].id).then(() => {
+            this.memo.esegui_dopo_update(nome_tabella, "cancella", valori, true);
+            this.memo.esegui_senti(nome_tabella, "cancella", valori);
+            this.sinc_decrease_n_repeat();
+          });
       }
-
-      if (update_tipo === UPDATE_TIPO.UPDATE) {
-        this.memo.db.update(nome_tabella, righe[0].id, valori).then(() => {
-          this.memo.esegui_dopo_update(nome_tabella, "update", valori, true);
-          this.memo.esegui_senti(nome_tabella, "update", valori);
-          this.sinc_decrease_n_repeat();
-        });
-      }
-
     });
   };
 
