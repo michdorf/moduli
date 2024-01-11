@@ -12,5 +12,11 @@
     "DB"
   ],
   "author": "Michele de Chiffre",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "openpgp": "^5.11.0"
+  },
+  "devDependencies": {
+    "@openpgp/web-stream-tools": "0.0.11-patch-0"
+  }
 }
