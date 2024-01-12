@@ -75,8 +75,8 @@ export default class MemoPgp {
 
     private uploadKeys(access_token: string, keys: KeysT) {
         const header = {"Authorization": `Bearer ${access_token}`};
-        Memo.ajax('https://dechiffre.dk/memo/pgp/', `private=${keys.private}&public=${keys.public}`, header).then((res) => {
-            console.log("From Memo PGP: ", res);
+        Memo.ajax('https://dechiffre.dk/memo/pgp/', `private=${encodeURIComponent(keys.private)}&public=${encodeURIComponent(keys.public)}`, header).then((res) => {
+            // console.log("From Memo PGP: ", res);
         }); 
     }
     
