@@ -12,45 +12,54 @@ type KeysT = {
 export default class MemoPgp {
     private passphraseSKey = "memo-pgp-passphrase";
 
-    public async encrypt(plain: string) {
-        const keys = await this.getKeys();
-        // put keys in backtick (``) to avoid errors caused by spaces or tabs
-        const publicKeyArmored = keys.public;
-    
-        const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
-    
-        const encrypted = await openpgp.encrypt({
-            message: await openpgp.createMessage({ text: plain }), // input as Message object
-            encryptionKeys: publicKey,
-        });
+    public async encrypt(plain: string): Promise<string> {
+        return new Promise(async (resolve, reject) => {
+            const keys = await this.getKeys();
+            // put keys in backtick (``) to avoid errors caused by spaces or tabs
+            const publicKeyArmored = keys.public;
+        
+            const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
+        
+            const encrypted = await openpgp.encrypt({
+                message: await openpgp.createMessage({ text: plain }), // input as Message object
+                encryptionKeys: publicKey,
+            });
 
-        return encrypted;
+            resolve(encrypted);
+        });
     }
 
-    public async decrypt(encrypted: string) {
-        const keys = await this.getKeys();
-        const publicKeyArmored = keys.public;
-        const privateKeyArmored = keys.private; // encrypted private key
+    public async decrypt(encrypted: string): Promise<string> {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const keys = await this.getKeys();
+                const publicKeyArmored = keys.public;
+                const privateKeyArmored = keys.private; // encrypted private key
 
-        const passphrase = this.getPassphrase();
-        if (!passphrase)    throw Error("No passphrase");
+                const passphrase = this.getPassphrase();
+                if (!passphrase) throw Error("No passphrase");
 
-        const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
+                const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
 
-        const privateKey = await openpgp.decryptKey({
-            privateKey: await openpgp.readPrivateKey({ armoredKey: privateKeyArmored }),
-            passphrase
+                const privateKey = await openpgp.decryptKey({
+                    privateKey: await openpgp.readPrivateKey({ armoredKey: privateKeyArmored }),
+                    passphrase
+                });
+
+                const message = await openpgp.readMessage({
+                    armoredMessage: encrypted // parse armored message
+                });
+                const { data: decrypted, signatures } = await openpgp.decrypt({
+                    message,
+                    verificationKeys: publicKey, // optional
+                    decryptionKeys: privateKey
+                });
+
+                resolve(decrypted);
+            } catch (error) {
+                reject(error);
+            }
         });
-    
-        const message = await openpgp.readMessage({
-            armoredMessage: encrypted // parse armored message
-        });
-        const { data: decrypted, signatures } = await openpgp.decrypt({
-            message,
-            verificationKeys: publicKey, // optional
-            decryptionKeys: privateKey
-        });
-        console.log(decrypted); // 'Hello, World!'
     }
 
     private getPassphrase() {
