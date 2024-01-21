@@ -221,7 +221,8 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
             });
             break;
           case UPDATE_TIPO.CANCELLAZIONE:
-            this.memo.db.cancella(nome_tabella, righe[0].id).then(() => {
+            // BUG: righe.length might be zero if this is first time the (already deleted) row gets synced
+ this.memo.db.cancella(nome_tabella, righe[0].id).then(() => {
               this.memo.esegui_dopo_update(nome_tabella, "cancella", valori, true);
               this.memo.esegui_senti(nome_tabella, "cancella", valori);
               this.sinc_decrease_n_repeat();
