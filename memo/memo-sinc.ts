@@ -142,9 +142,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
   
             if (righe[i].eliminatoil === 0) {
               delete righe[i].eliminatoil;
-            } else if (righe[i].eliminatoil) {
-              console.info("Synker ikke fordi den er slettet (memo.js)", righe[i]);
-              continue;
             }
   
             this.sinc_dati_server(nome_tabella, righe[i]);
@@ -204,29 +201,33 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
         this.num_in_coda++;
   
         valori = this.memo.esegui_before_update(nome_tabella, update_tipo, valori, true);
+
+        const me = this;
+        function callback(uptipo: tUPDATE_TIPO) {
+          me.memo.esegui_dopo_update(nome_tabella, uptipo, valori, true);
+          me.memo.esegui_senti(nome_tabella, uptipo, valori);
+          me.sinc_decrease_n_repeat();
+        }
   
         switch (update_tipo) {
           case UPDATE_TIPO.INSERIMENTO:
             this.memo.db.inserisci(nome_tabella, valori).then(() => {
-              this.memo.esegui_dopo_update(nome_tabella, "inserisci", valori, true);
-              this.memo.esegui_senti(nome_tabella, "inserisci", valori);
-              this.sinc_decrease_n_repeat();
+              callback("inserisci");
             });
             break;
           case UPDATE_TIPO.UPDATE:
             this.memo.db.update(nome_tabella, righe[0].id, valori).then(() => {
-              this.memo.esegui_dopo_update(nome_tabella, "update", valori, true);
-              this.memo.esegui_senti(nome_tabella, "update", valori);
-              this.sinc_decrease_n_repeat();
+              callback("update")
             });
             break;
           case UPDATE_TIPO.CANCELLAZIONE:
-            // BUG: righe.length might be zero if this is first time the (already deleted) row gets synced
- this.memo.db.cancella(nome_tabella, righe[0].id).then(() => {
-              this.memo.esegui_dopo_update(nome_tabella, "cancella", valori, true);
-              this.memo.esegui_senti(nome_tabella, "cancella", valori);
-              this.sinc_decrease_n_repeat();
-            });
+            if (righe.length == 0) {
+              callback("cancella")
+            } else {
+              this.memo.db.cancella(nome_tabella, righe[0].id).then(() => {
+                callback("cancella");
+              });
+            }
         }
       });
     };
