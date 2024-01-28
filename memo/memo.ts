@@ -73,7 +73,7 @@ export default class Memo {
       funz();
     }
   }
-  _esegui_suPronto = <Array<() => void>>[];
+  _esegui_suPronto: Array<() => void> = [];
   /**
    * Runs all functions added as listeners
    */
