@@ -1,3 +1,4 @@
+import Fornitore from "../moduli/fornitore";
 import Memo, { UPDATE_TIPO, tUPDATE_TIPO } from "./memo";
 
 const is_web_worker = typeof window === "undefined";
@@ -14,6 +15,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     fetch_interval = 1000;
     min_fetch_interval = 200;
     max_fetch_interval = 20000;
+    public needsAuth = new Fornitore<boolean>();
     public access_token = "";
     public endpoint = "/memo/api/sinc.php";
   
@@ -116,6 +118,10 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       const url = "https://dechiffre.dk" + (this.endpoint || "/memo/api/sinc.php") + "?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
       Memo.ajax(url, post, header).then((responseText) => {
         if (responseText.substring(0,7)==="Errore:"){
+          // TODO: please specify (all) the correct error message(s)
+          if (responseText.toLowerCase().indexOf("entrato")) {
+            this.needsAuth.onEvento(true);
+          }
           this.memo.errore("Memo.sinc_comunica() " + responseText);
           this.sinc_comu_err();
           return false;
