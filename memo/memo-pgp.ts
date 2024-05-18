@@ -1,3 +1,4 @@
+import sha256 from "../moduli/sha256";
 import Memo from "./memo";
 import * as openpgp from 'openpgp';
 
@@ -59,6 +60,12 @@ export default class MemoPgp {
             } catch (error) {
                 reject(error);
             }
+        });
+    }
+
+    public setPassphrase(passphrase: string) {
+        sha256(passphrase).then((hash) => {
+            return localStorage.setItem(this.passphraseSKey, hash);
         });
     }
 
