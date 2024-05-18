@@ -12,9 +12,9 @@ type KeysT = {
 export default class MemoPgp {
     private passphraseSKey = "memo-pgp-passphrase";
 
-    public async encrypt(plain: string): Promise<string> {
+    public async encrypt(access_token: string, plain: string): Promise<string> {
         return new Promise(async (resolve, reject) => {
-            const keys = await this.getKeys();
+            const keys = await this.getKeys(access_token);
             // put keys in backtick (``) to avoid errors caused by spaces or tabs
             const publicKeyArmored = keys.public;
         
