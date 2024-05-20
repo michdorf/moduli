@@ -1,5 +1,7 @@
 import Fornitore from "../moduli/fornitore";
-import Memo, { UPDATE_TIPO, tUPDATE_TIPO } from "./memo";
+import uuid from "../moduli/uuid";
+import Memo, { TMemoTabella, UPDATE_TIPO, tUPDATE_TIPO } from "./memo";
+import IMemoRiga from "./memoriga.interface";
 
 const is_web_worker = typeof window === "undefined";
 
@@ -44,13 +46,25 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     riprendi_sinc() {
       this.pausa_sinc(false);
     }
-  
-    impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: any) {
+
+    async impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: IMemoRiga, usaPGP: boolean = false) {
+      let payload;
+      if (usaPGP) {
+        // Skal bruge UUID
+        delete riga.id; // Brug ikke serverens id-værdi!
+        if (!this.access_token) {
+          return this.memo.errore("Memo.sinc.impacchetta_camb(): access_token mancante");
+        }
+        const encrypted = await this.memo.pgp.encrypt(this.access_token, JSON.stringify(riga));
+        payload = {UUID: riga.UUID, payload: encrypted};
+      } else {
+        riga.payload = ""; // DEFAULT value
+      }
       nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
       return {
         tabella: nome_tabella,
         updateTipo: tipo,
-        dati: encodeURIComponent(JSON.stringify(riga)),
+        dati: encodeURIComponent(JSON.stringify(usaPGP ? payload : riga)),
         ora: Math.round((new Date().getTime()) / 1000)
       };
     };
@@ -71,8 +85,9 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
      * @param  {Object} camb_data [description]
      * @return {[type]}           [description]
      */
-    sinc_cambia(tipo: tUPDATE_TIPO, nome_tabella: string, camb_data: unknown) {
-      this.sinc_stato.camb_aspettanti.push(this.impacchetta_camb(tipo, nome_tabella, camb_data));
+    async sinc_cambia(tipo: tUPDATE_TIPO, tabella: TMemoTabella, camb_data: IMemoRiga) {
+      debugger;
+      this.sinc_stato.camb_aspettanti.push(await this.impacchetta_camb(tipo, tabella.nome, camb_data, !!tabella.usaPGP));
       this.sinc_salva_stato();
   
       this.sinc_comunica();

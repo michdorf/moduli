@@ -3,6 +3,7 @@ import iDB, { idbArgs } from '../moduli/indexedDB'
 import stellaDB, { stellaArgs } from '../moduli/stellaDB';
 import IMemoRiga from "./memoriga.interface";
 import { MemoSinc } from './memo-sinc';
+import MemoPgp from './memo-pgp';
 
 export const UPDATE_TIPO: { [key: string]: tUPDATE_TIPO } = Object.freeze({ UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella" });
 export type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
@@ -13,6 +14,11 @@ interface iUpdateListener {
 type tUpdateListeners = Array<iUpdateListener>;
 type tUpdateFunz = (tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) => any;
 type suErroreFunz = (msg: string) => void;
+export type TMemoTabella = {
+  nome: string,
+  indexes?: string[],
+  usaPGP?: boolean
+};
 
 /**
  * [Memo description]
@@ -25,26 +31,31 @@ export default class Memo {
   db: stellaDB | iDB;
   sinc: MemoSinc;
   nome_db = "";
+  pgp: MemoPgp;
   nomi_tabelle: string[];
+  tabelle: TMemoTabella[] = [];
   sonoPronto = false;
   uuid = uuid; // Funzione per creare identificativo unico
 
-  constructor(nome_db: string, nomi_tabelle: string[], indexes: Array<Array<string>>) {
+  constructor(nome_db: string, tabelle: TMemoTabella[]) {
     this.nome_db = nome_db;
-    this.nomi_tabelle = nomi_tabelle;
+    this.nomi_tabelle = tabelle.map(t => t.nome);
+    this.tabelle = tabelle;
+    const indexes: string[][] = tabelle.map(t => t.indexes || []);
     const iDBtmp = new iDB();
     let indexedDB_supportato = iDBtmp.compat;
     
     this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this);
+    this.pgp = new MemoPgp();
 
     let suPronto = () => { this.sonoPronto = true; this._sono_pronto() };
     if (indexedDB_supportato) {
       this.db = new iDB();
-      this.db.apri(this.nome_db).then(() => { this.iniz_tabelle(nomi_tabelle, suPronto, indexes) });
+      this.db.apri(this.nome_db).then(() => { this.iniz_tabelle(this.nomi_tabelle, suPronto, indexes) });
     } else {
       this.db = new stellaDB(this.nome_db);
       if (typeof window !== "undefined") {
-        this.iniz_tabelle.bind(this)(nomi_tabelle, suPronto, indexes);
+        this.iniz_tabelle.bind(this)(this.nomi_tabelle, suPronto, indexes);
       }
     }
   }
@@ -174,23 +185,35 @@ export default class Memo {
     return nome_tabella.replace(/[^0-9a-z]/gi, "");
   };
 
-  inserisci = <T extends IMemoRiga & {UUID: string | undefined}>(nome_tabella: string, riga: T, callback?: (rigaUUID: string) => void) => {
+  inserisci = <T extends IMemoRiga & {UUID: string | undefined}>(tabella: TMemoTabella, riga: T, callback?: (rigaUUID: string) => void) => {
     if (this._esegue_senti) {
       console.error("Non e' una buona idea di eseguire Memo.inserisci() dentro Memo.senti(). Aborta!");
       return;
     }
-    nome_tabella = this.pulisci_t_nome(nome_tabella);
+    const nome_tabella = this.pulisci_t_nome(tabella.nome);
     if (riga.hasOwnProperty("UUID") && riga["UUID"]) {
       console.warn("Per cortesia lascia a memo.js a creare un UUID");
     }
     riga["UUID"] = this.uuid();
     riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
-    return this.db.inserisci(nome_tabella, riga).then((ins_id) => {
-      this.sinc.sinc_cambia("inserisci", nome_tabella, riga);
-      this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
-      if (typeof callback === "function") {
-        callback(riga["UUID"]);
+    this.selezionaRiga(nome_tabella, riga["UUID"]).then((origRiga: any) => {
+      if (tabella.usaPGP) {
+        riga = { ...origRiga, ...riga};
       }
+      return this.db.inserisci(nome_tabella, riga).then((ins_id) => {
+        this.sinc.sinc_cambia("inserisci", tabella, riga);
+        this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
+        if (typeof callback === "function") {
+          callback(riga["UUID"]);
+        }
+      });
+    });
+  };
+
+  selezionaRiga(nome_tabella: string, UUID: string) {
+    return this.seleziona(nome_tabella,  {
+      field: "UUID",
+      valore: UUID
     });
   };
 
@@ -209,13 +232,13 @@ export default class Memo {
    * @param valori
    * @returns {*}
    */
-  update<rigaT extends IMemoRiga>(nome_tabella: string, id_unico: string, valori: rigaT) {
+  update<rigaT extends IMemoRiga>(tabella: TMemoTabella, id_unico: string, valori: rigaT) {
     return new Promise((resolve: (UUID: string) => void, reject) => {
       if (this._esegue_senti) {
         console.error("Non e' una buona idea di eseguire Memo.update() dentro Memo.senti(). Aborta!");
         return;
       }
-      nome_tabella = this.pulisci_t_nome(nome_tabella);
+      const nome_tabella = this.pulisci_t_nome(tabella.nome);
 
       this.seleziona(nome_tabella, {
         field: "UUID",
@@ -226,10 +249,14 @@ export default class Memo {
           reject("memo ha trovato piu rige con " + "UUID" + " = '" + id_unico + "'");
           return false;
         }
+        if (tabella.usaPGP) {
+          const tmp = rige[0] as rigaT;
+          valori = Object.assign(tmp, valori);
+        }
         valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
-        this.db.update(nome_tabella, (rige[0] as { id: number;[key: string]: unknown }).id, valori).then(() => {
+        this.db.update(nome_tabella, (rige[0] as { id: number; [key: string]: unknown }).id, valori).then(() => {
           valori["UUID"] = id_unico;
-          this.sinc.sinc_cambia("update", nome_tabella, valori);
+          this.sinc.sinc_cambia("update", tabella, valori);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
           resolve(id_unico);
         });
@@ -243,14 +270,14 @@ export default class Memo {
    * @param id_unico - UUID
    * @returns {*}
    */
-  cancella(nome_tabella: string, id_unico: string) {
+  cancella(tabella: TMemoTabella, id_unico: string) {
     return new Promise((resolve, reject) => {
       if (this._esegue_senti) {
         reject("Non e' una buona idea di eseguire Memo.cancella() dentro Memo.senti(). Aborta!");
         console.error("Non e' una buona idea di eseguire Memo.cancella() dentro Memo.senti(). Aborta!");
         return;
       }
-      nome_tabella = this.pulisci_t_nome(nome_tabella);
+      const nome_tabella = this.pulisci_t_nome(tabella.nome);
       
       this.seleziona(nome_tabella, {
         field: "UUID",
@@ -262,9 +289,12 @@ export default class Memo {
           return false;
         }
         this.db.cancella(nome_tabella, rige[0].id).then(() => {
-          let valori: { [key: string]: string | number } = {};
+          let valori: IMemoRiga = {UUID: ''};
           valori["UUID"] = id_unico;
-          this.sinc.sinc_cambia("cancella", nome_tabella, valori);
+          if (tabella.usaPGP) {
+            valori = Object.assign(rige[0], valori);
+          }
+          this.sinc.sinc_cambia("cancella", tabella, valori);
           resolve(id_unico);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
         });

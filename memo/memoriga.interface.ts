@@ -1,6 +1,7 @@
 type IMemoRiga = {
     id?: number;
     UUID: string;
+    payload?: string;
     utente?: number;
     eliminatoil?: number;
     cambiati?: string; /* ";" delimeter */
