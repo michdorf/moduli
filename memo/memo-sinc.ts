@@ -86,7 +86,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
      * @return {[type]}           [description]
      */
     async sinc_cambia(tipo: tUPDATE_TIPO, tabella: TMemoTabella, camb_data: IMemoRiga) {
-      debugger;
       this.sinc_stato.camb_aspettanti.push(await this.impacchetta_camb(tipo, tabella.nome, camb_data, !!tabella.usaPGP));
       this.sinc_salva_stato();
   
@@ -131,7 +130,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       const ultimo_update = this.sinc_stato.ultimo_update || 0;
       const header = this.access_token ? {"Authorization": `Bearer ${this.access_token}`} : undefined;
       const url = "https://dechiffre.dk" + (this.endpoint || "/memo/api/sinc.php") + "?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
-      Memo.ajax(url, post, header).then((responseText) => {
+      Memo.ajax(url, post, header).then(async (responseText) => {
         if (responseText.substring(0,7)==="Errore:"){
           // TODO: please specify (all) the correct error message(s)
           if (responseText.toLowerCase().indexOf("entrato")) {
@@ -164,8 +163,9 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
             if (righe[i].eliminatoil === 0) {
               delete righe[i].eliminatoil;
             }
-  
-            this.sinc_dati_server(nome_tabella, righe[i]);
+
+            // TODO: maybe it could run asyncronisly
+            await this.sinc_dati_server(nome_tabella, righe[i]);
           }
         }
   
@@ -190,15 +190,20 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     };
   
     num_in_coda = 0;
-    sinc_dati_server(nome_tabella: string, valori: any) {
+    async sinc_dati_server(nome_tabella: string, valori: IMemoRiga) {
       delete valori.id; // Brug ikke serverens id-værdi!
   
       nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
+      const tabella = this.memo.trovaTabella(nome_tabella);
+      if (!tabella) {
+        this.memo.errore("Tabella non trovata: " + nome_tabella);
+        return false;
+      }
   
       this.memo.seleziona(nome_tabella, {
         field: "UUID",
         valore: valori["UUID"]
-      }).then((righe: any) => {
+      }).then(async (righe: any) => {
         /* console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori); */
   
         var update_tipo;
@@ -220,7 +225,17 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
         }
   
         this.num_in_coda++;
-  
+
+        if (tabella.usaPGP) {
+          if (valori.payload) {
+            const decrypted =  await this.memo.pgp.decrypt(valori.payload || '');
+            if (decrypted) {
+              const valdata = JSON.parse(decrypted);
+              valori = {...valori, ...valdata};
+              delete valori.payload;
+            }
+          }
+        }
         valori = this.memo.esegui_before_update(nome_tabella, update_tipo, valori, true);
 
         const me = this;

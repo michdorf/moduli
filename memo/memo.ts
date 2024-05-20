@@ -134,6 +134,11 @@ export default class Memo {
   esegui_dopo_update(nome_tabella: string, tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) {
     this.esegui_funzioni(this.$dopo_update, nome_tabella, tipo, riga, dalServer);
   }
+
+  trovaTabella(nome_tabella: string): TMemoTabella | undefined { 
+    return this.tabelle.find(t => t.nome === nome_tabella);
+  }
+
   esegui_funzioni(funz_arr: tUpdateListeners, nome_tabella: string, tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) {
     for (var i = 0; i < funz_arr.length; i++) {
       var m = funz_arr[i], r;
