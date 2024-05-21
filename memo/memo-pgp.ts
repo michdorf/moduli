@@ -21,10 +21,16 @@ export default class MemoPgp {
         
             const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
         
-            const encrypted = await openpgp.encrypt({
+            let encrypted = await openpgp.encrypt({
                 message: await openpgp.createMessage({ text: plain }), // input as Message object
                 encryptionKeys: publicKey,
             });
+
+            // Removes header and footer from PGP message
+            //-----BEGIN PGP MESSAGE-----\n
+            // and
+            // -----END PGP MESSAGE-----\n
+            encrypted = encrypted.replace("-----BEGIN PGP MESSAGE-----\n", "").replace("-----END PGP MESSAGE-----\n", "");
 
             resolve(encrypted);
         });
@@ -46,6 +52,14 @@ export default class MemoPgp {
                     privateKey: await openpgp.readPrivateKey({ armoredKey: privateKeyArmored }),
                     passphrase
                 });
+
+                // Add header and footer from PGP message
+                //-----BEGIN PGP MESSAGE-----\n
+                // and
+                // -----END PGP MESSAGE-----\n
+                if (!encrypted.startsWith("-----BEGIN PGP MESSAGE-----\n")) {
+                    encrypted = "-----BEGIN PGP MESSAGE-----\n" + encrypted + "-----END PGP MESSAGE-----\n";
+                }
 
                 const message = await openpgp.readMessage({
                     armoredMessage: encrypted // parse armored message
