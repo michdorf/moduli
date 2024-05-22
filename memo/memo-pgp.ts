@@ -79,8 +79,11 @@ export default class MemoPgp {
 
     public setPassphrase(passphrase: string) {
         // Salt with lan+cio to prevent rainbow table attacks mainly against main password
-        sha256("lan" + passphrase + "cio").then((hash) => {
-            return localStorage.setItem(this.passphraseSKey, hash);
+        return new Promise<string>((resolve) => {
+                sha256("lan" + passphrase + "cio").then((hash) => {
+                localStorage.setItem(this.passphraseSKey, hash);
+                resolve(hash);
+            });
         });
     }
 
@@ -92,24 +95,29 @@ export default class MemoPgp {
         return localStorage.getItem(this.passphraseSKey);
     }
 
-    async verifyPassphrase(passphrase: string) {
-        const keys = await this.getKeys();
-        try {
-            // Read the armored private key
-            const privateKey = await openpgp.readPrivateKey({ armoredKey: keys.private });
+    verifyPassphrase(passphrase: string, access_token?: string) {
+        return new Promise<boolean>((resolve, reject) => {
+            this.getKeys(access_token, passphrase).then(async (keys) => {
+                try {
+                    // Read the armored private key
+                    const privateKey = await openpgp.readPrivateKey({ armoredKey: keys.private });
+                    
+                    // Attempt to decrypt the private key using the provided password
+                    await openpgp.decryptKey({
+                        privateKey,
+                        passphrase: passphrase
+                    });
             
-            // Attempt to decrypt the private key using the provided password
-            await openpgp.decryptKey({
-                privateKey,
-                passphrase: passphrase
+                    // If no error is thrown, the password is correct
+                    resolve(true);
+                } catch (e) {
+                    // If an error is thrown, the password is incorrect
+                    resolve(false);
+                }
+            }).catch((e) => {
+                resolve(true); // It's not because of the passphrase
             });
-    
-            // If no error is thrown, the password is correct
-            return true;
-        } catch (e) {
-            // If an error is thrown, the password is incorrect
-            return false;
-        }
+        });
     }
 
     private async generateKey(passphrase?: string): Promise<KeysT> {
@@ -135,8 +143,14 @@ export default class MemoPgp {
         }); 
     }
     
-    getKeys(access_token?: string): Promise<KeysT> {
-        return new Promise((resolve, reject) => {
+    /**
+     * 
+     * @param access_token 
+     * @param newpassphrase Used by verifyPassphrase() if no key is found 
+     * @returns 
+     */
+    getKeys(access_token?: string, newpassphrase?: string): Promise<KeysT> {
+        return new Promise((resolve, reject: (reason: 'No access token' | `Error in getKeys(): ${string}` | "No passphrase") => void) => {
             const key = localStorage.getItem(storageKey);
             if (key) {
                 return resolve(JSON.parse(key));
@@ -147,7 +161,7 @@ export default class MemoPgp {
             }
 
             const header = {"Authorization": `Bearer ${access_token}`};
-            Memo.ajax('https://dechiffre.dk/memo/pgp/', "", header).then((res) => {
+            Memo.ajax('https://dechiffre.dk/memo/pgp/', "", header).then(async (res) => {
                 type ConErrore = {
                     errore?: "Non sei entrato correttamente" | 'Non hai ancora una chiave' | "Chiave PGP già presente" | "Metodo non supportato";
                 };
@@ -159,7 +173,10 @@ export default class MemoPgp {
                         case 'Non hai ancora una chiave': 
                             let passphrase = this.getPassphrase();
                             if (!passphrase) { 
-                                throw Error("No passphrase");
+                                if (!newpassphrase) {
+                                    throw Error("No passphrase");
+                                }
+                                passphrase = await this.setPassphrase(newpassphrase);
                             }
                             this.generateKey(passphrase).then((keys) => {
                                 this.uploadKeys(access_token, keys);
@@ -168,7 +185,7 @@ export default class MemoPgp {
                             });
                         break;
                         default:
-                            reject("Error in getKeys(): " + data.errore);
+                            reject(`Error in getKeys(): ${data.errore}`);
                     }
                 } else {
                     localStorage.setItem(storageKey, JSON.stringify(data as KeyResponse));
