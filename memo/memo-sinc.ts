@@ -47,9 +47,10 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       this.pausa_sinc(false);
     }
 
-    async impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: IMemoRiga, usaPGP: boolean = false) {
+    async impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: IMemoRiga, tabella: TMemoTabella) {
       let payload;
-      if (usaPGP) {
+      if (tabella.usaPGP) {
+        debugger;
         // Skal bruge UUID
         delete riga.id; // Brug ikke serverens id-værdi!
         if (!this.access_token) {
@@ -57,6 +58,14 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
         }
         const encrypted = await this.memo.pgp.encrypt(this.access_token, JSON.stringify(riga));
         payload = {UUID: riga.UUID, payload: encrypted};
+        const plainValues = tabella.noPGP?.reduce((acc, key) => {
+          if (key in riga) {
+            acc = {...acc, [key]: riga[key]};
+          }
+          return acc;
+        }, {} as Partial<IMemoRiga>) || {};
+
+        payload = {...payload, ...plainValues};
       } else {
         riga.payload = ""; // DEFAULT value
       }
@@ -64,7 +73,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       return {
         tabella: nome_tabella,
         updateTipo: tipo,
-        dati: encodeURIComponent(JSON.stringify(usaPGP ? payload : riga)),
+        dati: encodeURIComponent(JSON.stringify(tabella.usaPGP ? payload : riga)),
         ora: Math.round((new Date().getTime()) / 1000)
       };
     };
@@ -86,7 +95,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
      * @return {[type]}           [description]
      */
     async sinc_cambia(tipo: tUPDATE_TIPO, tabella: TMemoTabella, camb_data: IMemoRiga) {
-      this.sinc_stato.camb_aspettanti.push(await this.impacchetta_camb(tipo, tabella.nome, camb_data, !!tabella.usaPGP));
+      this.sinc_stato.camb_aspettanti.push(await this.impacchetta_camb(tipo, tabella.nome, camb_data, tabella));
       this.sinc_salva_stato();
   
       this.sinc_comunica();
@@ -230,6 +239,8 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
           if (valori.payload) {
             const decrypted =  await this.memo.pgp.decrypt(valori.payload || '');
             if (decrypted) {
+              // TODO: here you "could" extract plain values from tabella.noPGP with like:
+              // Object.keys(noPGP).reduce((prev, key) => if (obj[key]) {return prev[key] = obj[key]}, {})
               const valdata = JSON.parse(decrypted);
               valori = {...valori, ...valdata};
               delete valori.payload;

@@ -17,7 +17,8 @@ type suErroreFunz = (msg: string) => void;
 export type TMemoTabella = {
   nome: string,
   indexes?: string[],
-  usaPGP?: boolean
+  usaPGP?: boolean,
+  noPGP?: string[]
 };
 
 /**

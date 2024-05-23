@@ -7,5 +7,6 @@ type IMemoRiga = {
     cambiati?: string; /* ";" delimeter */
     cambiato?: number;
     creato?: number;
+    [key: string]: any;
 }
 export default IMemoRiga;
