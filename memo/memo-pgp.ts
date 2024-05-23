@@ -77,6 +77,10 @@ export default class MemoPgp {
         });
     }
 
+    public hashPassphrase(passphrase: string) {
+        return sha256("lan" + passphrase + "cio");
+    }
+
     public setPassphrase(passphrase: string) {
         // Salt with lan+cio to prevent rainbow table attacks mainly against main password
         return new Promise<string>((resolve) => {
@@ -84,7 +88,7 @@ export default class MemoPgp {
                 localStorage.removeItem(this.passphraseSKey);
                 return;
             }
-            sha256("lan" + passphrase + "cio").then((hash) => {
+            this.hashPassphrase(passphrase).then((hash) => {
                 localStorage.setItem(this.passphraseSKey, hash);
                 resolve(hash);
             });
@@ -99,12 +103,13 @@ export default class MemoPgp {
         return localStorage.getItem(this.passphraseSKey);
     }
 
-    verifyPassphrase(passphrase: string, access_token?: string) {
+    verifyPassphrase(plainpassphrase: string, access_token?: string) {
         return new Promise<boolean>((resolve, reject) => {
-            this.getKeys(access_token, passphrase).then(async (keys) => {
+            this.getKeys(access_token, plainpassphrase).then(async (keys) => {
                 try {
                     // Read the armored private key
                     const privateKey = await openpgp.readPrivateKey({ armoredKey: keys.private });
+                    const passphrase = await this.hashPassphrase(plainpassphrase);
                     
                     // Attempt to decrypt the private key using the provided password
                     await openpgp.decryptKey({
