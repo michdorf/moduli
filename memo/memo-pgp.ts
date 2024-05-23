@@ -80,7 +80,11 @@ export default class MemoPgp {
     public setPassphrase(passphrase: string) {
         // Salt with lan+cio to prevent rainbow table attacks mainly against main password
         return new Promise<string>((resolve) => {
-                sha256("lan" + passphrase + "cio").then((hash) => {
+            if (passphrase === "") {
+                localStorage.removeItem(this.passphraseSKey);
+                return;
+            }
+            sha256("lan" + passphrase + "cio").then((hash) => {
                 localStorage.setItem(this.passphraseSKey, hash);
                 resolve(hash);
             });
