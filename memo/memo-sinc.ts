@@ -42,6 +42,9 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
   
     pausa_sinc(pausa: boolean = true) {
       this.inpausa = typeof pausa !== "undefined" ? !!pausa : true;
+      if (!this.inpausa) {
+        setTimeout(() => {this.sinc_repeat()}, 200);
+      }
     }
     riprendi_sinc() {
       this.pausa_sinc(false);
@@ -50,7 +53,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     async impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: IMemoRiga, tabella: TMemoTabella) {
       let payload;
       if (tabella.usaPGP) {
-        debugger;
         // Skal bruge UUID
         delete riga.id; // Brug ikke serverens id-værdi!
         if (!this.access_token) {
@@ -105,7 +107,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     sta_comunicando = false;
     sinc_comunica() {
       if (this.inpausa) {
-        setTimeout(() => {this.sinc_repeat()}, 5000);
+        // setTimeout(() => {this.sinc_repeat()}, 5000);
         return;
       }
       if (this.sinc_stato.camb_aspettanti.length !== this.ult_num_camb
@@ -151,7 +153,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
         }
   
         var data = JSON.parse(responseText); // JSONparseNums(responseText);
-        this.sinc_stato.ultimo_update = data.ultimo_update;
         this.sinc_salva_stato();
   
         // Juster fetch interval alt efter antal ændringer
@@ -163,6 +164,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
         if (this.fetch_interval < this.min_fetch_interval) { this.fetch_interval = this.min_fetch_interval}
   
         var righe = [], i;
+        let sinc_dati_errori = false;
         for (let nome_tabella in data.novita) {
   
           righe = data.novita[nome_tabella];
@@ -174,14 +176,19 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
             }
 
             // TODO: maybe it could run asyncronisly
-            await this.sinc_dati_server(nome_tabella, righe[i]);
+            if (false === await this.sinc_dati_server(nome_tabella, righe[i])) {
+              sinc_dati_errori = true;
+            }
           }
         }
   
         // Clean up and reset
-        this.sinc_stato.camb_aspettanti.splice(0, this.sinc_finoa_inx);
-        this.ult_num_camb = -1;
-        this.sinc_salva_stato();
+        if (!sinc_dati_errori) {
+          this.sinc_stato.ultimo_update = data.ultimo_update;
+          this.sinc_stato.camb_aspettanti.splice(0, this.sinc_finoa_inx);
+          this.ult_num_camb = -1;
+          this.sinc_salva_stato();
+        }
   
         if (!num_righe) { // num_righe = numero totale di tutte tabelle
           this.sinc_repeat();
@@ -237,6 +244,10 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
 
         if (tabella.usaPGP) {
           if (valori.payload) {
+            if (!this.memo.pgp.isReady()) {
+              this.memo.errore("PGP non pronto");
+              return false;
+            }
             const decrypted =  await this.memo.pgp.decrypt(valori.payload || '');
             if (decrypted) {
               // TODO: here you "could" extract plain values from tabella.noPGP with like:

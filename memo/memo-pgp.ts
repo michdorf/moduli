@@ -1,3 +1,4 @@
+import Fornitore from "../moduli/fornitore";
 import sha256 from "../moduli/sha256";
 import Memo from "./memo";
 import * as openpgp from 'openpgp';
@@ -11,6 +12,7 @@ type KeysT = {
 };
 
 export default class MemoPgp {
+    public onReady = new Fornitore<boolean>();
     private passphraseSKey = "memo-pgp-passphrase";
 
     public async encrypt(access_token: string, plain: string): Promise<string> {
@@ -64,20 +66,29 @@ export default class MemoPgp {
                 const message = await openpgp.readMessage({
                     armoredMessage: encrypted // parse armored message
                 });
-                const { data: decrypted, signatures } = await openpgp.decrypt({
-                    message,
-                    verificationKeys: publicKey, // optional
-                    decryptionKeys: privateKey
-                });
+                try {
+                    const { data: decrypted, signatures } = await openpgp.decrypt({
+                        message,
+                        verificationKeys: publicKey, // optional
+                        decryptionKeys: privateKey
+                    });
 
-                resolve(decrypted);
+                    resolve(decrypted);
+                } catch (e) {
+                    console.error(e);
+                    reject(e);
+                }
             } catch (error) {
                 reject(error);
             }
         });
     }
 
-    public hashPassphrase(passphrase: string) {
+    public isReady(): boolean {
+        return (this.hasPassphrase() && !!localStorage.getItem(storageKey));
+    }
+
+    hashPassphrase(passphrase: string) {
         return sha256("lan" + passphrase + "cio");
     }
 
@@ -90,13 +101,14 @@ export default class MemoPgp {
             }
             this.hashPassphrase(passphrase).then((hash) => {
                 localStorage.setItem(this.passphraseSKey, hash);
+                this.onReady.onEvento(this.isReady());
                 resolve(hash);
             });
         });
     }
 
     public hasPassphrase() {
-        return this.getPassphrase();
+        return !!this.getPassphrase();
     }
 
     private getPassphrase() {
@@ -189,6 +201,7 @@ export default class MemoPgp {
                             }
                             this.generateKey(passphrase).then((keys) => {
                                 this.uploadKeys(access_token, keys);
+                                this.onReady.onEvento(this.isReady());
                                 localStorage.setItem(storageKey, JSON.stringify(keys)); 
                                 resolve(keys);
                             });
