@@ -42,9 +42,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
   
     pausa_sinc(pausa: boolean = true) {
       this.inpausa = typeof pausa !== "undefined" ? !!pausa : true;
-      if (!this.inpausa) {
-        setTimeout(() => {this.sinc_repeat()}, 200);
-      }
     }
     riprendi_sinc() {
       this.pausa_sinc(false);
@@ -107,7 +104,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     sta_comunicando = false;
     sinc_comunica() {
       if (this.inpausa) {
-        // setTimeout(() => {this.sinc_repeat()}, 5000);
+        setTimeout(() => {this.sinc_repeat()}, 5000);
         return;
       }
       if (this.sinc_stato.camb_aspettanti.length !== this.ult_num_camb
