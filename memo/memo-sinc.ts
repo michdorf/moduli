@@ -248,13 +248,18 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
               this.memo.errore("PGP non pronto");
               return false;
             }
-            const decrypted =  await this.memo.pgp.decrypt(valori.payload || '');
-            if (decrypted) {
-              // TODO: here you "could" extract plain values from tabella.noPGP with like:
-              // Object.keys(noPGP).reduce((prev, key) => if (obj[key]) {return prev[key] = obj[key]}, {})
-              const valdata = JSON.parse(decrypted);
-              valori = {...valori, ...valdata};
-              delete valori.payload;
+            try {
+              const decrypted =  await this.memo.pgp.decrypt(valori.payload || '');
+              if (decrypted) {
+                // TODO: here you "could" extract plain values from tabella.noPGP with like:
+                // Object.keys(noPGP).reduce((prev, key) => if (obj[key]) {return prev[key] = obj[key]}, {})
+                const valdata = JSON.parse(decrypted);
+                valori = {...valori, ...valdata};
+                delete valori.payload;
+              }
+            } catch (e) {
+              console.error("Error in decrypting payload: ", e);
+              return false;
             }
           }
         }
