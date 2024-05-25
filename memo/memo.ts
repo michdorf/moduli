@@ -361,7 +361,7 @@ export default class Memo {
 
   riazzera() {
     this.sinc.sinc_riazzera();
-    this.pgp.setPassphrase(""); 
+    this.pgp.riazzera();
     this.db.eliminaDB(this.nome_db, function (tipo, msg) {
       location.reload();
     });

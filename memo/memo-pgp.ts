@@ -234,4 +234,10 @@ export default class MemoPgp {
             }); 
         });
     }
+
+    public riazzera() {
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem(this.passphraseSKey);
+        this.onReady.onEvento(this.isReady());
+    }
 }
