@@ -3,7 +3,7 @@
  * which can be subscribed to
  */
 export default class Fornitore<T> { 
-    private funz: Array<(value: T) => void> = [];
+    private funz: Array<[(value: T) => void, boolean]> = [];
     private lastValue: T | undefined;
 
     /**
@@ -11,10 +11,12 @@ export default class Fornitore<T> {
      * @param value new value
      */
     onEvento(value: T) {
-        this.lastValue = value;
         for (let i = 0; i < this.funz.length; i++) {
-            this.funz[i](value);
+            if (!this.funz[i][1] || this.funz[i][1] && this.lastValue !== value) {
+                this.funz[i][0](value);
+            }
         }
+        this.lastValue = value;
     }
 
     /**
@@ -22,9 +24,9 @@ export default class Fornitore<T> {
      * @param callback 
      * @param runOnSubscribe runs when subscribe, if the event has just happened previously
      */
-    subscribe(callback: (value: T) => void, runOnSubscribe = true) {
-        this.funz.push(callback); 
-        if (runOnSubscribe && typeof(this.lastValue) !== "undefined") {
+    subscribe(callback: (value: T) => void, options?: {runOnSubscribe?: boolean, onlyChanges?: boolean}) {
+        this.funz.push([callback, options?.onlyChanges || false]); 
+        if (options?.runOnSubscribe && typeof(this.lastValue) !== "undefined") {
             callback(this.lastValue); 
         }
     }
