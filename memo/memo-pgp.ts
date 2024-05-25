@@ -141,6 +141,24 @@ export default class MemoPgp {
         });
     }
 
+    public async getFingerprints() {
+        try {
+            const keys = await this.getKeys();
+            // Read the armored key (public or private)
+            const privkey = await openpgp.readKey({ armoredKey: keys.private });
+            const pubkey = await openpgp.readKey({ armoredKey: keys.public });
+        
+            // Access the fingerprint property
+            const privfingerprint = privkey.getFingerprint();
+            const pubfingerprint = pubkey.getFingerprint();
+        
+            return [privfingerprint, pubfingerprint];
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    }
+
     private async generateKey(passphrase?: string): Promise<KeysT> {
         if (!passphrase) {
             passphrase = this.getPassphrase() || "";
