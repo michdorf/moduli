@@ -97,7 +97,7 @@ export default class MemoPgp {
         return new Promise<string>((resolve) => {
             if (passphrase === "") {
                 localStorage.removeItem(this.passphraseSKey);
-                return;
+                return "";
             }
             this.hashPassphrase(passphrase).then((hash) => {
                 localStorage.setItem(this.passphraseSKey, hash);
@@ -145,14 +145,12 @@ export default class MemoPgp {
         try {
             const keys = await this.getKeys();
             // Read the armored key (public or private)
-            const privkey = await openpgp.readKey({ armoredKey: keys.private });
             const pubkey = await openpgp.readKey({ armoredKey: keys.public });
         
             // Access the fingerprint property
-            const privfingerprint = privkey.getFingerprint();
             const pubfingerprint = pubkey.getFingerprint();
         
-            return [privfingerprint, pubfingerprint];
+            return pubfingerprint;
         } catch (e) {
             console.error(e);
             return null;
