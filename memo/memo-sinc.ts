@@ -4,11 +4,25 @@ import Memo, { TMemoTabella, UPDATE_TIPO, tUPDATE_TIPO } from "./memo";
 import IMemoRiga from "./memoriga.interface";
 
 const is_web_worker = typeof window === "undefined";
+type TCambiamento = {
+  encrypt: boolean,
+  tabella: string,
+  updateTipo: tUPDATE_TIPO,
+  dati: string,
+  ora: number
+};
+
 
 export class MemoSinc /* extends Memo */ { // Circular import - fix it
     memo: Memo;
     storage_chiave = "memo_sinc";
-    sinc_stato: any = {};
+    sinc_stato: {
+      ultimo_update: number,
+      camb_aspettanti: Array<TCambiamento>,
+    } = {
+      camb_aspettanti: [],
+      ultimo_update: 0
+    };
     sinc_global_stato: {[key: string]: any} = {};
     nome_db = "";
     inpausa = false;
@@ -47,32 +61,47 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       this.pausa_sinc(false);
     }
 
-    async impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: IMemoRiga, tabella: TMemoTabella) {
+    async encrypt_camb(riga: IMemoRiga, tabella: TMemoTabella): Promise<IMemoRiga | void> {
+      // Skal bruge UUID
       let payload;
-      if (tabella.usaPGP) {
-        // Skal bruge UUID
-        delete riga.id; // Brug ikke serverens id-værdi!
-        if (!this.access_token) {
-          return this.memo.errore("Memo.sinc.impacchetta_camb(): access_token mancante");
+      delete riga.id; // Brug ikke serverens id-værdi!
+      if (!this.access_token) {
+        this.memo.errore("Memo.sinc.impacchetta_camb(): access_token mancante");
+        return;
+      }
+      const encrypted = await this.memo.pgp.encrypt(this.access_token, JSON.stringify(riga));
+      payload = {UUID: riga.UUID, payload: encrypted};
+      const plainValues = tabella.noPGP?.reduce((acc, key) => {
+        if (key in riga) {
+          acc = {...acc, [key]: riga[key]};
         }
-        const encrypted = await this.memo.pgp.encrypt(this.access_token, JSON.stringify(riga));
-        payload = {UUID: riga.UUID, payload: encrypted};
-        const plainValues = tabella.noPGP?.reduce((acc, key) => {
-          if (key in riga) {
-            acc = {...acc, [key]: riga[key]};
-          }
-          return acc;
-        }, {} as Partial<IMemoRiga>) || {};
+        return acc;
+      }, {} as Partial<IMemoRiga>) || {};
 
-        payload = {...payload, ...plainValues};
-      } else {
+      return {...payload, ...plainValues};
+    } 
+
+    encode_dati(dati: IMemoRiga): string {
+      return encodeURIComponent(JSON.stringify(dati));
+    }
+    decode_dati(dati: string): IMemoRiga {
+      return JSON.parse(decodeURIComponent(dati));
+    }
+    impacchetta_camb(tipo: tUPDATE_TIPO, nome_tabella: string, riga: IMemoRiga, tabella: TMemoTabella): TCambiamento {
+      if (!tabella.usaPGP) {
         riga.payload = ""; // DEFAULT value
       }
+      /* if (tabella.usaPGP) {
+        payload = this.encrypt_camb(riga, tabella);
+      } else {
+        riga.payload = ""; // DEFAULT value
+      } */
       nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
       return {
+        encrypt: !!tabella.usaPGP,
         tabella: nome_tabella,
         updateTipo: tipo,
-        dati: encodeURIComponent(JSON.stringify(tabella.usaPGP ? payload : riga)),
+        dati: this.encode_dati(riga),
         ora: Math.round((new Date().getTime()) / 1000)
       };
     };
@@ -102,7 +131,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
   
     ult_num_camb = -1; // Per il debounce
     sta_comunicando = false;
-    sinc_comunica() {
+    async sinc_comunica() {
       if (this.inpausa) {
         setTimeout(() => {this.sinc_repeat()}, 5000);
         return;
@@ -132,9 +161,33 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       this.sta_comunicando = true;
       // Gem hvor mange ændringer, der sendes, så disse kan fjernes, når ajax er fuldført
       this.sinc_finoa_inx = this.sinc_stato.camb_aspettanti.length;
+
+      // Encrypt necessary data on demand
+      let error_encryption = false;
+      const camb_aspettanti = await Promise.all(this.sinc_stato.camb_aspettanti.map(async (camb) => {
+        if (camb.encrypt) {
+          let tabella = this.memo.trovaTabella(camb.tabella);
+          if (tabella) {
+            const encrypted = await this.encrypt_camb(this.decode_dati(camb.dati), tabella);
+            if (encrypted) {
+              camb.dati = this.encode_dati(encrypted);
+            } else {
+              this.memo.errore("Memo.sinc.comunica() could not encrypt data.");
+              error_encryption = true;
+            }
+            return camb;
+          }
+        }
+        return camb;
+      }));
+
+      if (error_encryption) {
+        this.sta_comunicando = false;
+        return;
+      }
   
       /* console.log("comunica col server", this.sinc_stato.camb_aspettanti); */
-      const post = "memo_cambs=" + encodeURIComponent(JSON.stringify(this.sinc_stato.camb_aspettanti));
+      const post = "memo_cambs=" + encodeURIComponent(JSON.stringify(camb_aspettanti));
       const ultimo_update = this.sinc_stato.ultimo_update || 0;
       const header = this.access_token ? {"Authorization": `Bearer ${this.access_token}`} : undefined;
       const url = "https://dechiffre.dk" + (this.endpoint || "/memo/api/sinc.php") + "?db=" + this.nome_db + "&ultimo_update=" + ultimo_update;
