@@ -3,11 +3,19 @@
   "version": "1.0.0",
   "description": "Piccoli moduli di michele",
   "main": "index.js",
+  "keywords": [
+    "indexedDB",
+    "PHP",
+    "DB"
+  ],
   "directories": {
     "test": "test"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "openpgp": "^5.11.0"
   },
   "devDependencies": {
     "tslib": "^2.6.2",
