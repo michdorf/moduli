@@ -25,7 +25,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     };
     sinc_global_stato: {[key: string]: any} = {};
     nome_db = "";
-    inpausa = false;
+    inpausa = true;
     sinc_finoa_inx = 0;
     debounce_hdl = 0;
     fetch_interval = 1000;
@@ -35,10 +35,13 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     public access_token = "";
     public endpoint = "/memo/api/sinc.php";
   
-    constructor(nome_db: string, memo: Memo) {
+    constructor(nome_db: string, memo: Memo, inpausa?: boolean) {
       // super(nome_db, nomi_tabelle, indexes); // her
   
       this.memo = memo;
+      if (typeof inpausa !== "undefined") {
+        this.inpausa = inpausa;
+      }
       if (!is_web_worker) {
         this.init_sinc(nome_db);
       }

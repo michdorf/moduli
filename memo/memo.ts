@@ -38,7 +38,7 @@ export default class Memo {
   sonoPronto = false;
   uuid = uuid; // Funzione per creare identificativo unico
 
-  constructor(nome_db: string, tabelle: TMemoTabella[]) {
+  constructor(nome_db: string, tabelle: TMemoTabella[], sincInPausa?: boolean) {
     this.nome_db = nome_db;
     this.nomi_tabelle = tabelle.map(t => t.nome);
     this.tabelle = tabelle;
@@ -46,7 +46,7 @@ export default class Memo {
     const iDBtmp = new iDB();
     let indexedDB_supportato = iDBtmp.compat;
     
-    this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this);
+    this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this, sincInPausa);
     this.pgp = new MemoPgp();
 
     let suPronto = () => { this.sonoPronto = true; this._sono_pronto() };
