@@ -35,6 +35,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
   sinc_global_stato: { [key: string]: any } = {};
   nome_db = "";
   inpausa = true;
+  num_camb_totale = 0;
   sinc_finoa_inx = 0;
   debounce_hdl = 0;
   fetch_interval = 1000;
@@ -44,7 +45,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
   /** Runs whenever the new data from server. 
    * @param number - number changed new rows. This is 0 when sync is done. 
    */
-  public onServerData = new Fornitore<number>();
+  public onServerData = new Fornitore<[number, number]>();
   public access_token = "";
   public endpoint = "/memo/api/sinc.php";
 
@@ -228,7 +229,8 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       }, {} as { [key: string]: any[] });
 
       if (num_righe) {
-        this.onServerData.onEvento(num_righe);
+        this.onServerData.onEvento([num_righe, num_righe]);
+        this.num_camb_totale = num_righe;
       }
       this.sinc_salva_stato();
 
@@ -287,9 +289,10 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     // Clean up and reset
     if (/* !sinc_dati_errori &&  */num_righe === 0) {
       this.sinc_stato.ultimo_update = ultimo_update;
+      this.num_camb_totale = 0;
       this.sinc_salva_stato();
     } else {
-      this.onServerData.onEvento(num_righe);
+      this.onServerData.onEvento([num_righe, this.num_camb_totale]);
       setTimeout(() => this.process_dati_server(), 0); // Reset stack - enables garbage collection?
     }
   }
