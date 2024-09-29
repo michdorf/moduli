@@ -291,6 +291,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       this.sinc_stato.ultimo_update = ultimo_update;
       this.num_camb_totale = 0;
       this.sinc_salva_stato();
+      this.sinc_repeat();
     } else {
       this.onServerData.onEvento([num_righe, this.num_camb_totale]);
       setTimeout(() => this.process_dati_server(), 0); // Reset stack - enables garbage collection?
