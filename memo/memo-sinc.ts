@@ -68,6 +68,10 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     this.sinc_stato = this.sinc_global_stato[this.nome_db] || { "camb_aspettanti": [], "novita": {}, "ultimo_update": 0 };
     this.sinc_stato.camb_aspettanti = this.sinc_stato.camb_aspettanti || [];
 
+    if (!this.sinc_stato.novita) {
+      this.sinc_stato.novita = {};
+    }
+
     this.sinc_comunica();
     this.process_dati_server();
   }
