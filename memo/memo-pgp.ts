@@ -63,23 +63,22 @@ export default class MemoPgp {
                     encrypted = "-----BEGIN PGP MESSAGE-----\n" + encrypted + "-----END PGP MESSAGE-----\n";
                 }
 
-                const message = await openpgp.readMessage({
+                openpgp.readMessage({
                     armoredMessage: encrypted // parse armored message
-                });
-                try {
-                    const { data: decrypted, signatures } = await openpgp.decrypt({
+                }).then(message => {
+                    openpgp.decrypt({
                         message,
                         verificationKeys: publicKey, // optional
                         decryptionKeys: privateKey
+                    }).then(({ data: decrypted, signatures }) => {
+                        resolve(decrypted);
+                    }).catch((e) => {
+                        console.error(e);
+                        reject(e);
                     });
-
-                    resolve(decrypted);
-                } catch (e) {
-                    console.error(e);
-                    reject(e);
-                }
+                }).catch(error => reject(error));
             } catch (error) {
-                reject(error);
+                ;
             }
         });
     }
