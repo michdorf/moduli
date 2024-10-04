@@ -158,7 +158,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       || this.num_in_coda > 0) {
 
       if (this.num_in_coda) {
-        console.warn("Memo.sinc.num_in_coda > 0. Forse Memo.sinc_comunica() viene eseguito troppo spesso");
+        console.warn("Memo.sinc.num_in_coda > 0. Forse Memo.sinc_comunica() viene eseguito troppo spesso"); 
       }
 
       this.ult_num_camb = this.sinc_stato.camb_aspettanti.length;
@@ -172,7 +172,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     }
 
     if (this.sta_comunicando) {
-      console.warn("sinc_comunica: Problema: Hai cercato di comunicare, ma Memo.sinc_comunica() sta gia' comunicando.");
+      // console.warn("sinc_comunica: Problema: Hai cercato di comunicare, ma Memo.sinc_comunica() sta gia' comunicando.");
       return;
     }
 
@@ -278,7 +278,8 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
 
         // TODO: maybe it could run asyncronisly
         if (false === await this.sinc_dati_server(nome_tabella, righe[i])) {
-          sinc_dati_errori = true;
+          sinc_dati_errori = true; // Doesn't seem to be run ever on pgp decryption errors
+          console.error("A processing error just occured in memo sinc. "); 
         } else {
           ultimo_update = Math.max(righe[i].cambiato || 0, ultimo_update);
           this.sinc_stato.novita[nome_tabella] = this.sinc_stato.novita[nome_tabella].filter(r => r.UUID !== righe[i].UUID);
