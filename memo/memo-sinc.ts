@@ -229,18 +229,15 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       if (num_righe) {
         this.onServerData.onEvento([num_righe, num_righe]);
         this.num_camb_totale = num_righe;
+        this.process_dati_server();
+      } else { // num_righe = numero totale di tutte tabelle
+        this.sinc_repeat();
       }
       this.sinc_salva_stato();
 
       this.fetch_interval = this.fetch_interval * (num_righe ? 0.8 : 1.2);
       if (this.fetch_interval > this.max_fetch_interval) { this.fetch_interval = this.max_fetch_interval }
       if (this.fetch_interval < this.min_fetch_interval) { this.fetch_interval = this.min_fetch_interval }
-
-      this.process_dati_server();
-
-      if (!num_righe) { // num_righe = numero totale di tutte tabelle
-        this.sinc_repeat();
-      }
 
       this.sinc_stato.camb_aspettanti.splice(0, this.sinc_finoa_inx);
       this.ult_num_camb = -1;
