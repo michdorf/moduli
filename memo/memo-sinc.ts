@@ -73,7 +73,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     }
 
     this.sinc_comunica();
-    this.process_dati_server();
   }
 
   pausa_sinc(pausa: boolean = true) {
@@ -154,12 +153,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       setTimeout(() => { this.sinc_repeat() }, 5000);
       return;
     }
-    if (this.sinc_stato.camb_aspettanti.length !== this.ult_num_camb
-      || this.num_in_coda > 0) {
-
-      if (this.num_in_coda) {
-        console.warn("Memo.sinc.num_in_coda > 0. Forse Memo.sinc_comunica() viene eseguito troppo spesso"); 
-      }
+    if (this.sinc_stato.camb_aspettanti.length !== this.ult_num_camb) {
 
       this.ult_num_camb = this.sinc_stato.camb_aspettanti.length;
 
@@ -228,7 +222,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       }, 0);
       // Merge novita from server with existing
       this.sinc_stato.novita = Object.keys(data.novita).reduce((acc, key) => {
-        acc[key] = [...(this.sinc_stato.novita[key] || []), ...(data.novita[key] || [])];
+        acc[key] = [...(this.sinc_stato.novita[key] || []), ...(data.novita[key].filter(n => !(this.sinc_stato.novita[key] || []).some(m => m.UUID === n.UUID)) || [])];
         return acc;
       }, {} as { [key: string]: any[] });
 
@@ -262,28 +256,37 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       });
   };
 
-  async process_dati_server() {
+  isProcessing = false;
+  async process_dati_server(isFromCallback = false) {
+    if (this.isProcessing && !isFromCallback) {
+      console.error("process_dati_server() is already running.");
+      return;
+    } else {
+      this.isProcessing = true; 
+    }
+
     const batchsize = 10;
     var righe: Array<IMemoRiga> = [], i: number;
     let ultimo_update = this.sinc_stato.ultimo_update || 0;
-    let sinc_dati_errori = false;
+
     for (let nome_tabella in this.sinc_stato.novita) {
       righe = this.sinc_stato.novita[nome_tabella];
 
-      for (i = 0; i < righe.length && i <= batchsize; i++) {
-
+      for (let i = 0; i < batchsize && i < righe.length; i++) {
         if (righe[i].eliminatoil === 0) {
           delete righe[i].eliminatoil;
         }
-
+  
         // TODO: maybe it could run asyncronisly
-        if (false === await this.sinc_dati_server(nome_tabella, righe[i])) {
-          sinc_dati_errori = true; // Doesn't seem to be run ever on pgp decryption errors
-          console.error("A processing error just occured in memo sinc. "); 
-        } else {
-          ultimo_update = Math.max(righe[i].cambiato || 0, ultimo_update);
-          this.sinc_stato.novita[nome_tabella] = this.sinc_stato.novita[nome_tabella].filter(r => r.UUID !== righe[i].UUID);
+        try {
+          await this.sinc_dati_server(nome_tabella, righe[i])
+        } catch (e) {
+          console.error("Error sincronizing dati server " + i);
         }
+
+        ultimo_update = Math.max(righe[i].cambiato || 0, ultimo_update);
+        // This will remove also the changes, that couldn't be syncronized (assert they are broken)
+        this.sinc_stato.novita[nome_tabella] = this.sinc_stato.novita[nome_tabella].filter(r => r.UUID !== righe[i].UUID);
       }
     }
 
@@ -291,20 +294,138 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       return n + this.sinc_stato.novita[key].length;
     }, 0);
 
+    this.onServerData.onEvento([num_righe, this.num_camb_totale]);
+
+    this.sinc_stato.ultimo_update = ultimo_update;
+    this.sinc_salva_stato();
+
     // Clean up and reset
     if (/* !sinc_dati_errori &&  */num_righe === 0) {
-      this.sinc_stato.ultimo_update = ultimo_update;
       this.num_camb_totale = 0;
-      this.sinc_salva_stato();
+      this.isProcessing = false;
       this.sinc_repeat();
     } else {
-      this.onServerData.onEvento([num_righe, this.num_camb_totale]);
-      setTimeout(() => this.process_dati_server(), 0); // Reset stack - enables garbage collection?
+      setTimeout(() => this.process_dati_server(true), 0); // Reset stack - enables garbage collection?
     }
   }
 
-  num_in_coda = 0;
-  async sinc_dati_server(nome_tabella: string, valori: IMemoRiga) {
+  sinc_dati_server(nome_tabella: string, valori: IMemoRiga) {
+    return new Promise((resolve, reject) => {
+      nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
+      const tabella = this.memo.trovaTabella(nome_tabella);
+      if (!tabella) {
+        this.memo.errore("Tabella non trovata: " + nome_tabella);
+        reject("Tabella non trovata: " + nome_tabella);
+        return;
+      }
+  
+      this.calcUpdateTipo(tabella, valori)
+        .then(({update_tipo, righe}) => {
+          this.extractValori(tabella, valori, update_tipo)
+            .then(valori => {
+              this.storeInDb(tabella, righe, update_tipo, valori)
+                .then(resolve);
+            }).catch(e => reject(e));
+        }).catch(e => reject(e));
+      })
+  }
+
+  calcUpdateTipo(tabella: TMemoTabella, valori: IMemoRiga) {
+    return new Promise<{update_tipo: tUPDATE_TIPO, righe: IMemoRiga}>((resolve, reject) => {
+      delete valori.id; // Brug ikke serverens id-værdi!
+
+      this.memo.seleziona(tabella.nome, {
+        field: "UUID",
+        valore: valori["UUID"]
+      }).then((righe: any) => {
+        /* console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori); */
+
+        var update_tipo;
+        if (valori.eliminatoil) {
+          update_tipo = UPDATE_TIPO.CANCELLAZIONE;
+        } else {
+          switch (righe.length) {
+            case 0:
+              update_tipo = UPDATE_TIPO.INSERIMENTO;
+              break;
+            case 1:
+              update_tipo = UPDATE_TIPO.UPDATE;
+              break;
+            default:
+              var msg = "memo ha trovato piu righe con " + "UUID" + " = '" + valori["UUID"] + "'";
+              console.error(msg);
+              reject(msg);
+              return;
+          }
+        }
+
+        resolve({update_tipo, righe});
+      });
+    });
+  }
+
+  extractValori(tabella: TMemoTabella, valori: IMemoRiga, update_tipo: tUPDATE_TIPO) {
+    return new Promise<IMemoRiga>((reoslve, reject) => {
+      if (tabella.usaPGP && valori.payload) { // Actually it should be enough to just check valori.payload !== ""
+        if (!this.memo.pgp.isReady()) {
+          this.memo.errore("PGP non pronto");
+          reject("PGP non pronto");
+          return;
+        }
+
+        this.memo.pgp.decrypt(valori.payload || '').then(decrypted => {
+          if (decrypted) {
+            // TODO: here you "could" extract plain values from tabella.noPGP with like:
+            // Object.keys(noPGP).reduce((prev, key) => if (obj[key]) {return prev[key] = obj[key]}, {})
+            const valdata = JSON.parse(decrypted);
+            valori = { ...valori, ...valdata };
+            delete valori.payload;
+            reoslve(this.memo.esegui_before_update(tabella.nome, update_tipo, valori, true));
+          }
+        }).catch((e) => {
+          reject(e);
+        });
+      } else {
+        reoslve(this.memo.esegui_before_update(tabella.nome, update_tipo, valori, true));
+      }
+    });
+  }
+
+  storeInDb(tabella: TMemoTabella, righe: IMemoRiga, update_tipo: tUPDATE_TIPO, valori: IMemoRiga) {
+    return new Promise<void>((resolve, reject) => {
+      const nome_tabella = tabella.nome;
+      const me = this;
+        function callback(uptipo: tUPDATE_TIPO) {
+          me.memo.esegui_dopo_update(nome_tabella, uptipo, valori, true);
+          me.memo.esegui_senti(nome_tabella, uptipo, valori);
+          resolve();
+          // me.sinc_decrease_n_repeat();
+        }
+  
+        switch (update_tipo) {
+          case UPDATE_TIPO.INSERIMENTO:
+            this.memo.db.inserisci(nome_tabella, valori).then(() => {
+              callback("inserisci");
+            });
+            break;
+          case UPDATE_TIPO.UPDATE:
+            this.memo.db.update(nome_tabella, righe[0].id, valori).then(() => {
+              callback("update")
+            });
+            break;
+          case UPDATE_TIPO.CANCELLAZIONE:
+            if (righe.length == 0) {
+              callback("cancella")
+            } else {
+              this.memo.db.cancella(nome_tabella, righe[0].id).then(() => {
+                callback("cancella");
+              });
+            }
+        }
+    });
+  }
+
+  /* async sinc_dati_server(nome_tabella: string, valori: IMemoRiga) {
     delete valori.id; // Brug ikke serverens id-værdi!
 
     nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
@@ -318,7 +439,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       field: "UUID",
       valore: valori["UUID"]
     }).then(async (righe: any) => {
-      /* console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori); */
+      // console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori);
 
       var update_tipo;
       if (valori.eliminatoil) {
@@ -337,8 +458,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
             return false;
         }
       }
-
-      this.num_in_coda++;
 
       if (tabella.usaPGP) {
         if (valori.payload) {
@@ -367,7 +486,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       function callback(uptipo: tUPDATE_TIPO) {
         me.memo.esegui_dopo_update(nome_tabella, uptipo, valori, true);
         me.memo.esegui_senti(nome_tabella, uptipo, valori);
-        me.sinc_decrease_n_repeat();
+        // me.sinc_decrease_n_repeat();
       }
 
       switch (update_tipo) {
@@ -391,7 +510,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
           }
       }
     });
-  };
+  }; */
 
   /**
    * Quando la comunicazione non e' riuscita
@@ -406,23 +525,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
     this.sta_comunicando = false;
   };
 
-  /**
-   * Hver gang et input fra serveren er gemt skal man tælle ned
-   * indtil der ikke er flere ændringer i kø,
-   * så er vi klar til at synkronisere igen - ikke før
-   */
-  sinc_decrease_n_repeat(non_diminuire?: boolean) {
-    if (!non_diminuire) {
-      this.num_in_coda--;
-    }
-
-    if (this.num_in_coda < 0) {
-      this.memo.errore("Fatal: sinc_num_in_coda < 0");
-    }
-    if (this.num_in_coda === 0) {
-      this.sinc_repeat();
-    }
-  };
   sinc_repeat() {
     setTimeout(this.sinc_comunica.bind(this), this.fetch_interval);
   };
