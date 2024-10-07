@@ -229,6 +229,8 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       if (num_righe) {
         this.onServerData.onEvento([num_righe, num_righe]);
         this.num_camb_totale = num_righe;
+        this.sinc_stato.ultimo_update = data.ultimo_update;
+
         this.process_dati_server();
       } else { // num_righe = numero totale di tutte tabelle
         this.sinc_repeat();
@@ -276,9 +278,9 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
   
         // TODO: maybe it could run asyncronisly
         try {
-          await this.sinc_dati_server(nome_tabella, righe[i])
+          await this.sinc_dati_server(nome_tabella, righe[i]);
         } catch (e) {
-          console.error("Error sincronizing dati server " + i);
+          console.error("Error sincronizing dati server " + i + "\n" + e, e);
         }
 
         ultimo_update = Math.max(righe[i].cambiato || 0, ultimo_update);
@@ -421,93 +423,6 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
         }
     });
   }
-
-  /* async sinc_dati_server(nome_tabella: string, valori: IMemoRiga) {
-    delete valori.id; // Brug ikke serverens id-værdi!
-
-    nome_tabella = this.memo.pulisci_t_nome(nome_tabella);
-    const tabella = this.memo.trovaTabella(nome_tabella);
-    if (!tabella) {
-      this.memo.errore("Tabella non trovata: " + nome_tabella);
-      return false;
-    }
-
-    this.memo.seleziona(nome_tabella, {
-      field: "UUID",
-      valore: valori["UUID"]
-    }).then(async (righe: any) => {
-      // console.log("Devo salvare " + (righe.length < 1 ? "inserimento": "update") + ": ", valori);
-
-      var update_tipo;
-      if (valori.eliminatoil) {
-        update_tipo = UPDATE_TIPO.CANCELLAZIONE;
-      } else {
-        switch (righe.length) {
-          case 0:
-            update_tipo = UPDATE_TIPO.INSERIMENTO;
-            break;
-          case 1:
-            update_tipo = UPDATE_TIPO.UPDATE;
-            break;
-          default:
-            var msg = "memo ha trovato piu righe con " + "UUID" + " = '" + valori["UUID"] + "'";
-            console.error(msg);
-            return false;
-        }
-      }
-
-      if (tabella.usaPGP) {
-        if (valori.payload) {
-          if (!this.memo.pgp.isReady()) {
-            this.memo.errore("PGP non pronto");
-            return false;
-          }
-          try {
-            const decrypted = await this.memo.pgp.decrypt(valori.payload || '');
-            if (decrypted) {
-              // TODO: here you "could" extract plain values from tabella.noPGP with like:
-              // Object.keys(noPGP).reduce((prev, key) => if (obj[key]) {return prev[key] = obj[key]}, {})
-              const valdata = JSON.parse(decrypted);
-              valori = { ...valori, ...valdata };
-              delete valori.payload;
-            }
-          } catch (e) {
-            console.error("Error in decrypting payload: ", e);
-            return false;
-          }
-        }
-      }
-      valori = this.memo.esegui_before_update(nome_tabella, update_tipo, valori, true);
-
-      const me = this;
-      function callback(uptipo: tUPDATE_TIPO) {
-        me.memo.esegui_dopo_update(nome_tabella, uptipo, valori, true);
-        me.memo.esegui_senti(nome_tabella, uptipo, valori);
-        // me.sinc_decrease_n_repeat();
-      }
-
-      switch (update_tipo) {
-        case UPDATE_TIPO.INSERIMENTO:
-          this.memo.db.inserisci(nome_tabella, valori).then(() => {
-            callback("inserisci");
-          });
-          break;
-        case UPDATE_TIPO.UPDATE:
-          this.memo.db.update(nome_tabella, righe[0].id, valori).then(() => {
-            callback("update")
-          });
-          break;
-        case UPDATE_TIPO.CANCELLAZIONE:
-          if (righe.length == 0) {
-            callback("cancella")
-          } else {
-            this.memo.db.cancella(nome_tabella, righe[0].id).then(() => {
-              callback("cancella");
-            });
-          }
-      }
-    });
-  }; */
 
   /**
    * Quando la comunicazione non e' riuscita
