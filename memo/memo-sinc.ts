@@ -225,11 +225,23 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
         acc[key] = [...(this.sinc_stato.novita[key] || []), ...(data.novita[key].filter(n => !(this.sinc_stato.novita[key] || []).some(m => m.UUID === n.UUID)) || [])];
         return acc;
       }, {} as { [key: string]: any[] });
+      var num_novita = Object.keys(this.sinc_stato.novita).reduce((n, key) => {
+        return n + this.sinc_stato.novita[key].length;
+      }, 0);
 
       if (num_righe) {
-        this.onServerData.onEvento([num_righe, num_righe]);
-        this.num_camb_totale = num_righe;
         this.sinc_stato.ultimo_update = data.ultimo_update;
+      }
+      if (num_novita) {
+        this.onServerData.onEvento([num_novita, num_novita]);
+        this.num_camb_totale = num_novita;
+
+        /* console.info("Got this novita from server");
+        Object.keys(this.sinc_stato.novita).forEach(nomeT => {
+          if (this.sinc_stato.novita[nomeT].length) {
+            console.table(this.sinc_stato.novita[nomeT]);
+          }
+        }); */
 
         this.process_dati_server();
       } else { // num_righe = numero totale di tutte tabelle
