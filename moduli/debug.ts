@@ -97,7 +97,7 @@ class debug {
       log_container = document.getElementById(log_container);
     console.log = (function (old_function, div_log) {
       return function (text) {
-        old_function.apply(this, arguments);
+        old_function.apply(null, arguments as any);
         if (div_log) {
           div_log.innerHTML += "Log: "+String(text).replace(/\n/g,"<br>")+"<br><br>";
         }
@@ -134,9 +134,8 @@ class debug {
         //alert("Info:\n"+text);
       };
     } (console.info.bind(console), log_container));
-  
-    window.addEventListener("error", handleError, true);
-    function handleError(evt: ErrorEvent) {
+
+    const handleError = (evt: ErrorEvent) => {
       if (this.touch_debug) {
         if (evt.message) { // Chrome sometimes provides this
           alert("error: " + evt.message + " at linenumber: " + evt.lineno + " of file: " + evt.filename);
@@ -145,6 +144,8 @@ class debug {
         }
       }
     }
+
+    window.addEventListener("error", handleError, true);
   }
 }
 

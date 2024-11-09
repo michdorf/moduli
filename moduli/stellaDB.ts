@@ -43,11 +43,11 @@ class stellaDB {
   }
 
   constructor(db_nome: string) {
-
+    this.db_nome = db_nome || this.std_db_nome;
     if (typeof window === "undefined") {
       return;
     }
-    
+
     if (this.maxSpazio === undefined) {
       var maxSpazioKey = this.storagePrefisso + "max_spazio";
 
@@ -64,7 +64,6 @@ class stellaDB {
       alert("Du har 20% lager tilbage");
     }
 
-    this.db_nome = db_nome || this.std_db_nome;
     var db_stat = this.get_db_stat(db_nome);
     // this.tabelle = db_stat.tabelle || [];
 
@@ -193,6 +192,7 @@ class stellaDB {
 
         if (args.valore && args.field) {
           rige = rige.filter(function (item) {
+            args = args as stellaArgs;
             if (typeof item !== "object" || typeof item[args.field as keyof typeof item] === "undefined") {
               reject(new Error("Riga:" + JSON.stringify(item) + " non contiene field " + args.field));
               return false;
