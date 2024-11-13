@@ -197,10 +197,9 @@ export default class Memo {
       return;
     }
     const nome_tabella = this.pulisci_t_nome(tabella.nome);
-    if (riga.hasOwnProperty("UUID") && riga["UUID"]) {
-      console.warn("Per cortesia lascia a memo.js a creare un UUID");
+    if (!riga.hasOwnProperty("UUID") || !riga["UUID"]) {
+      riga["UUID"] = this.uuid();
     }
-    riga["UUID"] = this.uuid();
     riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
     this.selezionaRiga(nome_tabella, riga["UUID"]).then((origRiga: any) => {
       if (tabella.usaPGP) {
