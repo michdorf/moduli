@@ -4,6 +4,7 @@ import stellaDB, { stellaArgs } from '../moduli/stellaDB';
 import IMemoRiga from "./memoriga.interface";
 import { MemoSinc } from './memo-sinc';
 import MemoPgp from './memo-pgp';
+import IcommonDB from '../moduli/database.interface';
 
 export const UPDATE_TIPO: { [key: string]: tUPDATE_TIPO } = Object.freeze({ UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella" });
 export type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
@@ -29,7 +30,7 @@ export type TMemoTabella = {
  * @constructor
  */
 export default class Memo {
-  db: stellaDB | iDB;
+  db: IcommonDB;
   sinc: MemoSinc;
   nome_db = "";
   pgp: MemoPgp;
@@ -222,11 +223,11 @@ export default class Memo {
     });
   };
 
-  seleziona(nome_tabella: string, args?: stellaArgs | idbArgs) {
+  seleziona<T>(nome_tabella: string, args?: stellaArgs | idbArgs): Promise<T[]> {
     nome_tabella = this.pulisci_t_nome(nome_tabella);
     return this.db.select(nome_tabella, args);
   };
-  select(nome_tabella: string, args: stellaArgs | idbArgs) {
+  select<T>(nome_tabella: string, args: stellaArgs | idbArgs): Promise<T[]> {
     return this.seleziona(nome_tabella, args);
   };
 
@@ -294,7 +295,7 @@ export default class Memo {
           return false;
         }
         this.db.cancella(nome_tabella, rige[0].id).then(() => {
-          let valori: IMemoRiga = {UUID: ''};
+          let valori: IMemoRiga = {UUID: '', cambiato: 0};
           valori["UUID"] = id_unico;
           if (tabella.usaPGP) {
             valori = Object.assign(rige[0], valori);

@@ -4,8 +4,9 @@ type IMemoRiga = {
     payload?: string;
     utente?: number;
     eliminatoil?: number;
+    /** @deprecated cambiati is not necessary anymore */    
     cambiati?: string; /* ";" delimeter */
-    cambiato?: number;
+    cambiato: number;
     creato?: number;
     [key: string]: any;
 }

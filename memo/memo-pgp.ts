@@ -32,8 +32,8 @@ export default class MemoPgp {
             //-----BEGIN PGP MESSAGE-----\n
             // and
             // -----END PGP MESSAGE-----\n
-            encrypted = encrypted.replace("-----BEGIN PGP MESSAGE-----\n", "").replace("-----END PGP MESSAGE-----\n", "");
-
+            encrypted = (encrypted as string).replace("-----BEGIN PGP MESSAGE-----\n", "").replace("-----END PGP MESSAGE-----\n", "");
+            /** @ts-ignore */
             resolve(encrypted);
         });
     }
@@ -71,6 +71,7 @@ export default class MemoPgp {
                         verificationKeys: publicKey, // optional
                         decryptionKeys: privateKey
                     }).then(({ data: decrypted, signatures }) => {
+                        /** @ts-ignore */
                         resolve(decrypted);
                     }).catch((e) => {
                         console.error(e);

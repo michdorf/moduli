@@ -1,6 +1,7 @@
 // NB. Questo e' la versione giusta. NON usi quello in /wb_note/js/indexedDB.js
 import { makeArray } from './webapp.helper';
 import debug from './debug';
+import IcommonDB from './database.interface';
 
 //prefixes of implementation that we want to test
 // indexedDB: IDBFactory = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
@@ -18,8 +19,8 @@ if (typeof window !== "undefined" && !('IDBKeyRange' in window)) {
 type CampoTipi = string | number;
 export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][]};
 
-class iDB {
-  macchina = "indexedDB";
+class iDB implements IcommonDB {
+  macchina: 'stellaDB' | 'indexedDB' = "indexedDB";
   db_HDL: any | IDBDatabase;
   insert_id = 0;
   compat = true;
@@ -50,7 +51,7 @@ class iDB {
   apri(nomebanca: string) {
     this.db_nome = nomebanca = nomebanca ? nomebanca : this.db_nome;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<this>((resolve, reject) => {
       var db_versione = typeof this.db_HDL === "object" ? this.db_HDL.version + 1 : 1;
       var request = indexedDB.open(nomebanca);
       request.onerror = function (event) {
@@ -226,9 +227,9 @@ class iDB {
   *  - startinx: number (primary-key index to start at - including that index) default to 1
   *  - limit: number (how many results you want)
   */
-  select(tabella: string, args?: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
+  select<T>(tabella: string, args?: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
     args = args ? args : {};
-    return new Promise((resolve: (rige: unknown[]) => void, reject) => {
+    return new Promise<T[]>((resolve: (rige: T[]) => void, reject) => {
       if (!this.isWorking()) {
         reject(new Error("Browser non compattibile. iDB.select()"));
         return false;
@@ -277,7 +278,7 @@ class iDB {
         //Tanke man kan implementere: Til når man kun skal have en bestemt værdi, skal man kun køre til den sidste række med den værdi (fordi det er sorteret efter args.field)
         //Til ideen skal du hoppe til afslutningen og ikke kalde cursor.continue()
         if (args?.limit && returneringer.length >= args.limit) {
-          resolve(returneringer); // Stop med at hente flere rækker
+          resolve(returneringer as T[]); // Stop med at hente flere rækker
         }
         else if (cursor) {
           if (typeof args?.startinx === "undefined" || cursorInx >= args.startinx) {
@@ -295,7 +296,7 @@ class iDB {
           //Færdig - ikke flere rækker
           //Da .onsuccess er et slags loop, skal man først returnere når alle rækker er fundet
 
-          resolve(returneringer);
+          resolve(returneringer as T[]);
         }
 
         cursorInx++;
@@ -324,8 +325,8 @@ class iDB {
     });
   }
 
-  update(nometabella: string, primaryKeyValore: CampoTipi, valori: Array<CampoTipi>) {
-    var promise = new Promise((resolve, reject) => {
+  update<T extends Record<string, CampoTipi>>(nometabella: string, primaryKeyValore: CampoTipi, valori: T) {
+    var promise = new Promise<T>((resolve, reject) => {
       if (nometabella === undefined || primaryKeyValore === undefined) {
         reject(new Error("nometabella eller primaryKeyValore er ikke sat i iDB.update()"));
         return false;
@@ -365,7 +366,7 @@ class iDB {
         };
         requestUpdate.onsuccess = function updateSecondoSuc(event: Event) {
           //Success - the value is updated
-          resolve(event);
+          resolve(valori);
         }
       };
     });
@@ -380,7 +381,7 @@ class iDB {
    * @returns 
    */
   cancella(nometabella: string, primaryKeyValore: CampoTipi) {
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       if (primaryKeyValore === undefined) {
         reject(new Error("primaryKeyValore er ikke sat i iDB.cancella()"));
         return false;
@@ -394,7 +395,7 @@ class iDB {
       var request = objectStore.delete(primaryKeyValore);
 
       request.onsuccess = (event: Event) => {
-        resolve(event);
+        resolve(true);
       };
     });
   };

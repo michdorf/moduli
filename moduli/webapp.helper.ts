@@ -85,7 +85,7 @@ export function debounce(func: Function, wait: number = 0, immediate: boolean = 
   // 'private' variable for instance
   // The returned function will be able to reference this due to closure.
   // Each call to the returned function will share this common timer.
-  var timeout: number | null;
+  var timeout: ReturnType<typeof setTimeout> | null;
 
   // Calling debounce returns a new anonymous function
   return function() {
