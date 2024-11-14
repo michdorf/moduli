@@ -176,10 +176,10 @@ export default class Memo {
     nome_tabella = this.pulisci_t_nome(nome_tabella);
     if (!this.db.essisteTabella(nome_tabella)) {
       if (this.db.macchina === "stellaDB") {
-        (this.db as stellaDB).creaTabella(nome_tabella, nome_tabella);
+        (this.db as unknown as stellaDB).creaTabella(nome_tabella, nome_tabella);
         suFinito();
       } else { // indexedDB
-        await (this.db as iDB).creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
+        await (this.db as unknown as iDB).creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
           suFinito();
         });
       }
