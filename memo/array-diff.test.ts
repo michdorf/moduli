@@ -6,6 +6,7 @@ describe("Array diff", () => {
     
     test("Works?", () => {
         expect(a.value).toEqual(new Map([[0, "Allan"], [1, "Egon Olsen"], [2, "Børge"]]));
+        expect(a.toArray()).toEqual(new Map([[0, "Allan"], [1, "Egon Olsen"], [2, "Børge"]]));
     });
 
     test("Detects changes", () => {

@@ -1,17 +1,33 @@
+/** @deprecated I don't think it makes sense to convert an array to this
+more complex datastructure. It is better to simply use Maps or map-like
+structure like [["0": "allan"], ["3", "Bitter"]] etc. like is use for assegnamenti:
+[["2024-10-08": 2], ["2023-12-24", 100]]
+*/
+
 type TArrayDiff<T> = Array<[number, T]>;
 type TChange = "a" | "d" | "c"; // add, delete, change
 
 export default class ArrayDiff<T> {
     value: Map<number, T> = new Map();
 
-    constructor(value: Array<T>) {
-        this.fromArray(value);
+    constructor(value?: Array<T>) {
+        if (value)
+            this.fromArray(value);
     }
 
     fromArray(value: Array<T>) {
         for (let i = 0; i < value.length; i++) {
             this.value.set(i, value[i]);
         }
+    }
+
+    static fromArray<T>(value: Array<T>) {
+        const r = new Map<number, T>();
+        for (let i = 0; i < value.length; i++) {
+            r.set(i, value[i]);
+        }
+
+        return r;
     }
 
     load(state: TArrayDiff<T>){
@@ -36,10 +52,6 @@ export default class ArrayDiff<T> {
      * @param master Is the server's version
      */
     merge(base: Map<number, T>, master: Map<number, T>): Map<number, T> {
-        const m = new Map().set("changes", []).set("result", []);
-        const clientDiffs = this.difference(base, this.value);
-        const serverDiffs = this.difference(base, master);
-
         const allKeys = ArrayDiff.combineKeys(master, this.value);
 
         const merged = new Map();
@@ -51,7 +63,7 @@ export default class ArrayDiff<T> {
                 merged.set(key, master.get(key));
             } else {
                 if (!this.value.has(key)) { // deleted on client
-                    return; 
+                    return;
                 }
                 merged.set(key, this.value.get(key));
             }
@@ -81,6 +93,10 @@ export default class ArrayDiff<T> {
         });
 
         return diff;
+    }
+
+    toArray(): TArrayDiff<T> {
+        return [...this.value];
     }
 
     toString() {
