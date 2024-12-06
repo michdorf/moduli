@@ -8,11 +8,11 @@ import IcommonDB from './database.interface';
 
 //prefixes of window.IDB objects
 if (typeof window !== "undefined" && !('IDBTransaction' in window)) {
-  // @ts-ignore 
+  // @ts-ignore
   IDBTransaction = IDBTransaction || webkitIDBTransaction || msIDBTransaction;
 }
 if (typeof window !== "undefined" && !('IDBKeyRange' in window)) {
-  // @ts-ignore 
+  // @ts-ignore
   IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
 }
 
@@ -21,7 +21,7 @@ export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: s
 
 class iDB implements IcommonDB {
   macchina: 'stellaDB' | 'indexedDB' = "indexedDB";
-  db_HDL: any | IDBDatabase;
+  db_HDL: IDBDatabase | undefined;
   insert_id = 0;
   compat = true;
   db_nome = "de_data";
@@ -258,8 +258,8 @@ class iDB implements IcommonDB {
 
       var keyRangeValue = null; // Default
       /* Følgende havde jeg problemer med hvis også args.field var blevet sat
-    
-    
+
+
       args.startinx = typeof args.startinx!=="undefined"?args.startinx:1;
       if (args.limit)
         keyRangeValue = IDBKeyRange.bound(args.startinx,args.limit+args.startinx-1);
@@ -308,7 +308,7 @@ class iDB implements IcommonDB {
   num_rows(tabella: string) {
     return new Promise((resolve, reject) => {
       if (!this.isWorking()) {
-        debug.error("Browser non compattibile. iDB.num_rows()", "iDB");
+        debug.error("Database not ready or browser non compattibile. iDB.num_rows()", "iDB");
         reject(new Error("Browser non compattibile. iDB.select()"));
         return false;
       }
@@ -376,9 +376,9 @@ class iDB implements IcommonDB {
 
   /**
    * Cancella una riga in tabella
-   * @param nometabella 
-   * @param primaryKeyValore 
-   * @returns 
+   * @param nometabella
+   * @param primaryKeyValore
+   * @returns
    */
   cancella(nometabella: string, primaryKeyValore: CampoTipi) {
     return new Promise<boolean>((resolve, reject) => {
