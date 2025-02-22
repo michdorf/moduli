@@ -81,7 +81,7 @@ export function merge(obj1: any, obj2: any, obj3: any) {
   return obj1;
 }
 
-export function debounce(func: Function, wait: number = 0, immediate: boolean = false) {
+export function debounce<T extends (...args: any[]) => any>(func: T, wait: number = 0, immediate: boolean = false): (...args: Parameters<T>) => void {
   // 'private' variable for instance
   // The returned function will be able to reference this due to closure.
   // Each call to the returned function will share this common timer.
