@@ -1,6 +1,7 @@
 // NB. Questo e' la versione giusta. NON usi quello in /wb_note/js/indexedDB.js
 import { makeArray } from './webapp.helper';
 import debug from './debug';
+import IcommonDB from './database.interface';
 
 //prefixes of implementation that we want to test
 // indexedDB: IDBFactory = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
@@ -18,8 +19,8 @@ if (typeof window !== "undefined" && !('IDBKeyRange' in window)) {
 type CampoTipi = string | number;
 export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][]};
 
-class iDB {
-  macchina = "indexedDB";
+class iDB implements IcommonDB {
+  macchina: "indexedDB" = "indexedDB";
   db_HDL: any | IDBDatabase;
   insert_id = 0;
   compat = true;
@@ -47,7 +48,7 @@ class iDB {
     return true;
   }
 
-  apri(nomebanca: string) {
+  apri(nomebanca: string): Promise<IDBDatabase> {
     this.db_nome = nomebanca = nomebanca ? nomebanca : this.db_nome;
 
     return new Promise((resolve, reject) => {
@@ -324,8 +325,8 @@ class iDB {
     });
   }
 
-  update(nometabella: string, primaryKeyValore: CampoTipi, valori: Array<CampoTipi>) {
-    var promise = new Promise((resolve, reject) => {
+  update<T extends Record<string, CampoTipi>>(nometabella: string, primaryKeyValore: CampoTipi, valori: T): Promise<T> {
+    var promise = new Promise<T>((resolve, reject) => {
       if (nometabella === undefined || primaryKeyValore === undefined) {
         reject(new Error("nometabella eller primaryKeyValore er ikke sat i iDB.update()"));
         return false;
@@ -365,7 +366,7 @@ class iDB {
         };
         requestUpdate.onsuccess = function updateSecondoSuc(event: Event) {
           //Success - the value is updated
-          resolve(event);
+          resolve(valori);
         }
       };
     });
@@ -380,7 +381,7 @@ class iDB {
    * @returns 
    */
   cancella(nometabella: string, primaryKeyValore: CampoTipi) {
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       if (primaryKeyValore === undefined) {
         reject(new Error("primaryKeyValore er ikke sat i iDB.cancella()"));
         return false;
@@ -394,7 +395,7 @@ class iDB {
       var request = objectStore.delete(primaryKeyValore);
 
       request.onsuccess = (event: Event) => {
-        resolve(event);
+        resolve(true);
       };
     });
   };
