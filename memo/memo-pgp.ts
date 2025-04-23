@@ -32,8 +32,8 @@ export default class MemoPgp {
             //-----BEGIN PGP MESSAGE-----\n
             // and
             // -----END PGP MESSAGE-----\n
-            encrypted = encrypted.replace("-----BEGIN PGP MESSAGE-----\n", "").replace("-----END PGP MESSAGE-----\n", "");
-
+            encrypted = (encrypted as string).replace("-----BEGIN PGP MESSAGE-----\n", "").replace("-----END PGP MESSAGE-----\n", "");
+            /** @ts-ignore */
             resolve(encrypted);
         });
     }
@@ -63,23 +63,23 @@ export default class MemoPgp {
                     encrypted = "-----BEGIN PGP MESSAGE-----\n" + encrypted + "-----END PGP MESSAGE-----\n";
                 }
 
-                const message = await openpgp.readMessage({
+                openpgp.readMessage({
                     armoredMessage: encrypted // parse armored message
-                });
-                try {
-                    const { data: decrypted, signatures } = await openpgp.decrypt({
+                }).then(message => {
+                    openpgp.decrypt({
                         message,
                         verificationKeys: publicKey, // optional
                         decryptionKeys: privateKey
+                    }).then(({ data: decrypted, signatures }) => {
+                        /** @ts-ignore */
+                        resolve(decrypted);
+                    }).catch((e) => {
+                        console.error(e);
+                        reject(e);
                     });
-
-                    resolve(decrypted);
-                } catch (e) {
-                    console.error(e);
-                    reject(e);
-                }
+                }).catch(error => reject(error));
             } catch (error) {
-                reject(error);
+                ;
             }
         });
     }

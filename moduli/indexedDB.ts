@@ -8,11 +8,11 @@ import IcommonDB from './database.interface';
 
 //prefixes of window.IDB objects
 if (typeof window !== "undefined" && !('IDBTransaction' in window)) {
-  // @ts-ignore 
+  // @ts-ignore
   IDBTransaction = IDBTransaction || webkitIDBTransaction || msIDBTransaction;
 }
 if (typeof window !== "undefined" && !('IDBKeyRange' in window)) {
-  // @ts-ignore 
+  // @ts-ignore
   IDBKeyRange = IDBKeyRange || webkitIDBKeyRange || msIDBKeyRange;
 }
 
@@ -20,8 +20,8 @@ type CampoTipi = string | number;
 export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][]};
 
 class iDB implements IcommonDB {
-  macchina: "indexedDB" = "indexedDB";
-  db_HDL: any | IDBDatabase;
+  macchina: 'stellaDB' | 'indexedDB' = "indexedDB";
+  db_HDL: IDBDatabase | undefined;
   insert_id = 0;
   compat = true;
   db_nome = "de_data";
@@ -51,7 +51,7 @@ class iDB implements IcommonDB {
   apri(nomebanca: string): Promise<IDBDatabase> {
     this.db_nome = nomebanca = nomebanca ? nomebanca : this.db_nome;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<this>((resolve, reject) => {
       var db_versione = typeof this.db_HDL === "object" ? this.db_HDL.version + 1 : 1;
       var request = indexedDB.open(nomebanca);
       request.onerror = function (event) {
@@ -227,9 +227,9 @@ class iDB implements IcommonDB {
   *  - startinx: number (primary-key index to start at - including that index) default to 1
   *  - limit: number (how many results you want)
   */
-  select(tabella: string, args?: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
+  select<T>(tabella: string, args?: {order?: 'asc' | 'desc', field?: string, valore?: CampoTipi, startinx?: number, limit?: number}) {//(tabel,key_value,callbackFunc)
     args = args ? args : {};
-    return new Promise((resolve: (rige: unknown[]) => void, reject) => {
+    return new Promise<T[]>((resolve: (rige: T[]) => void, reject) => {
       if (!this.isWorking()) {
         reject(new Error("Browser non compattibile. iDB.select()"));
         return false;
@@ -258,8 +258,8 @@ class iDB implements IcommonDB {
 
       var keyRangeValue = null; // Default
       /* Følgende havde jeg problemer med hvis også args.field var blevet sat
-    
-    
+
+
       args.startinx = typeof args.startinx!=="undefined"?args.startinx:1;
       if (args.limit)
         keyRangeValue = IDBKeyRange.bound(args.startinx,args.limit+args.startinx-1);
@@ -278,7 +278,7 @@ class iDB implements IcommonDB {
         //Tanke man kan implementere: Til når man kun skal have en bestemt værdi, skal man kun køre til den sidste række med den værdi (fordi det er sorteret efter args.field)
         //Til ideen skal du hoppe til afslutningen og ikke kalde cursor.continue()
         if (args?.limit && returneringer.length >= args.limit) {
-          resolve(returneringer); // Stop med at hente flere rækker
+          resolve(returneringer as T[]); // Stop med at hente flere rækker
         }
         else if (cursor) {
           if (typeof args?.startinx === "undefined" || cursorInx >= args.startinx) {
@@ -296,7 +296,7 @@ class iDB implements IcommonDB {
           //Færdig - ikke flere rækker
           //Da .onsuccess er et slags loop, skal man først returnere når alle rækker er fundet
 
-          resolve(returneringer);
+          resolve(returneringer as T[]);
         }
 
         cursorInx++;
@@ -308,7 +308,7 @@ class iDB implements IcommonDB {
   num_rows(tabella: string) {
     return new Promise((resolve, reject) => {
       if (!this.isWorking()) {
-        debug.error("Browser non compattibile. iDB.num_rows()", "iDB");
+        debug.error("Database not ready or browser non compattibile. iDB.num_rows()", "iDB");
         reject(new Error("Browser non compattibile. iDB.select()"));
         return false;
       }
@@ -325,7 +325,7 @@ class iDB implements IcommonDB {
     });
   }
 
-  update<T extends Record<string, CampoTipi>>(nometabella: string, primaryKeyValore: CampoTipi, valori: T): Promise<T> {
+  update<T extends Record<string, CampoTipi>>(nometabella: string, primaryKeyValore: CampoTipi, valori: T) {
     var promise = new Promise<T>((resolve, reject) => {
       if (nometabella === undefined || primaryKeyValore === undefined) {
         reject(new Error("nometabella eller primaryKeyValore er ikke sat i iDB.update()"));
@@ -376,9 +376,9 @@ class iDB implements IcommonDB {
 
   /**
    * Cancella una riga in tabella
-   * @param nometabella 
-   * @param primaryKeyValore 
-   * @returns 
+   * @param nometabella
+   * @param primaryKeyValore
+   * @returns
    */
   cancella(nometabella: string, primaryKeyValore: CampoTipi) {
     return new Promise<boolean>((resolve, reject) => {

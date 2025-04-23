@@ -4,6 +4,7 @@ import stellaDB, { stellaArgs } from '../moduli/stellaDB';
 import IMemoRiga from "./memoriga.interface";
 import { MemoSinc } from './memo-sinc';
 import MemoPgp from './memo-pgp';
+import IcommonDB from '../moduli/database.interface';
 
 export const UPDATE_TIPO: { [key: string]: tUPDATE_TIPO } = Object.freeze({ UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella" });
 export type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
@@ -29,7 +30,7 @@ export type TMemoTabella = {
  * @constructor
  */
 export default class Memo {
-  db: stellaDB | iDB;
+  db: IcommonDB;
   sinc: MemoSinc;
   nome_db = "";
   pgp: MemoPgp;
@@ -38,7 +39,7 @@ export default class Memo {
   sonoPronto = false;
   uuid = uuid; // Funzione per creare identificativo unico
 
-  constructor(nome_db: string, tabelle: TMemoTabella[]) {
+  constructor(nome_db: string, tabelle: TMemoTabella[], sincInPausa?: boolean) {
     this.nome_db = nome_db;
     this.nomi_tabelle = tabelle.map(t => t.nome);
     this.tabelle = tabelle;
@@ -46,7 +47,7 @@ export default class Memo {
     const iDBtmp = new iDB();
     let indexedDB_supportato = iDBtmp.compat;
     
-    this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this);
+    this.sinc = /* this.constructor.name === 'MemoSinc' ? me as MemoSinc :*/ new MemoSinc(nome_db, this, sincInPausa);
     this.pgp = new MemoPgp();
 
     let suPronto = () => { this.sonoPronto = true; this._sono_pronto() };
@@ -175,10 +176,10 @@ export default class Memo {
     nome_tabella = this.pulisci_t_nome(nome_tabella);
     if (!this.db.essisteTabella(nome_tabella)) {
       if (this.db.macchina === "stellaDB") {
-        (this.db as stellaDB).creaTabella(nome_tabella, nome_tabella);
+        (this.db as unknown as stellaDB).creaTabella(nome_tabella, nome_tabella);
         suFinito();
       } else { // indexedDB
-        await (this.db as iDB).creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
+        await (this.db as unknown as iDB).creaTabella(nome_tabella, ["UUID"].concat(indexes)).then(function () {
           suFinito();
         });
       }
@@ -197,10 +198,9 @@ export default class Memo {
       return;
     }
     const nome_tabella = this.pulisci_t_nome(tabella.nome);
-    if (riga.hasOwnProperty("UUID") && riga["UUID"]) {
-      console.warn("Per cortesia lascia a memo.js a creare un UUID");
+    if (!riga.hasOwnProperty("UUID") || !riga["UUID"]) {
+      riga["UUID"] = this.uuid();
     }
-    riga["UUID"] = this.uuid();
     riga = this.esegui_before_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
     this.selezionaRiga(nome_tabella, riga["UUID"]).then((origRiga: any) => {
       if (tabella.usaPGP) {
@@ -223,11 +223,11 @@ export default class Memo {
     });
   };
 
-  seleziona(nome_tabella: string, args?: stellaArgs | idbArgs) {
+  seleziona<T>(nome_tabella: string, args?: stellaArgs | idbArgs): Promise<T[]> {
     nome_tabella = this.pulisci_t_nome(nome_tabella);
     return this.db.select(nome_tabella, args);
   };
-  select(nome_tabella: string, args: stellaArgs | idbArgs) {
+  select<T>(nome_tabella: string, args: stellaArgs | idbArgs): Promise<T[]> {
     return this.seleziona(nome_tabella, args);
   };
 
@@ -295,7 +295,7 @@ export default class Memo {
           return false;
         }
         this.db.cancella(nome_tabella, rige[0].id).then(() => {
-          let valori: IMemoRiga = {UUID: ''};
+          let valori: IMemoRiga = {UUID: '', cambiato: 0};
           valori["UUID"] = id_unico;
           if (tabella.usaPGP) {
             valori = Object.assign(rige[0], valori);

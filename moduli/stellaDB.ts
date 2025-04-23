@@ -21,7 +21,7 @@ export interface stellaArgs {
 }
 
 class stellaDB implements IcommonDB {
-  macchina: 'stellaDB' = "stellaDB";
+  macchina: 'stellaDB' | 'indexedDB' = "stellaDB";
   db_nome: string;
   storagePrefisso = "sDB_";
   std_db_nome = "stellaDB";
@@ -44,12 +44,11 @@ class stellaDB implements IcommonDB {
   }
 
   constructor(db_nome: string) {
-
     this.db_nome = db_nome || this.std_db_nome;
     if (typeof window === "undefined") {
       return;
     }
-    
+
     if (this.maxSpazio === undefined) {
       var maxSpazioKey = this.storagePrefisso + "max_spazio";
 
@@ -73,7 +72,7 @@ class stellaDB implements IcommonDB {
   }
 
   apri(nomebanca: string) {
-    return new Promise(function (resolve) {
+    return new Promise<stellaDB>(function (resolve) {
       resolve(new stellaDB(nomebanca));
     });
   }
@@ -173,8 +172,8 @@ class stellaDB implements IcommonDB {
     })
   }
 
-  select(nome_tabella: string, args?: stellaArgs) {
-    return new Promise((resolve: (rige: unknown[]) => void, reject: Function) => {
+  select<T>(nome_tabella: string, args?: stellaArgs) {
+    return new Promise<T[]>((resolve: (rige: T[]) => void, reject: Function) => {
 
       // Run async
       this.run_async(this, () => {
@@ -194,8 +193,9 @@ class stellaDB implements IcommonDB {
 
         if (args.valore && args.field) {
           rige = rige.filter(function (item) {
-            if (typeof item !== "object" || typeof item[args?.field as keyof typeof item] === "undefined") {
-              reject(new Error("Riga:" + JSON.stringify(item) + " non contiene field " + args?.field));
+            args = args as stellaArgs;
+            if (typeof item !== "object" || typeof item[args.field as keyof typeof item] === "undefined") {
+              reject(new Error("Riga:" + JSON.stringify(item) + " non contiene field " + args.field));
               return false;
             }
             return item[args?.field as keyof typeof item] === args?.valore;
@@ -292,7 +292,7 @@ class stellaDB implements IcommonDB {
           this.db_cache[this.db_nome][nome_tabella]
         );
 
-        resolve(true /* riga_id */);
+        resolve(typeof riga_id !== 'undefined');
 
       });
     });

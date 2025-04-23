@@ -2,7 +2,7 @@ import { stellaArgs } from "./stellaDB";
 
 export default interface IcommonDB {
     macchina: 'stellaDB' | 'indexedDB';
-    apri: (nome_db: string) => Promise<unknown>;
+    apri: (nome_db: string) => Promise<IcommonDB>;
     essisteTabella: (tabella_nome: string) => boolean
     select<T>(nome_tabella: string, args?: stellaArgs): Promise<Array<T>>;
     select<T>(nome_tabella: string, args?: {order?: 'asc' | 'desc', field?: string, valore?: string | number, startinx?: number, limit?: number}): Promise<Array<T>>;
