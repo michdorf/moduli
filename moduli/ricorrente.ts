@@ -31,15 +31,17 @@ export default class Ricorrente implements RicorrenteT {
 
     static scorsa(ricorrente: Ricorrente, offset?: Date): Date {
         const oggi = offset ? /*clone*/new Date(offset.getTime()) : new Date();
-        const prossima = Ricorrente.prossima(ricorrente, offset);
-        let intervalloN: number;
+        const prossima = Ricorrente.prossima(ricorrente, offset); // 27
+        let intervalloN: number = ricorrente.intervalloN;
         switch (ricorrente.intervallo) {
             case "g":
-                prossima.setDate(prossima.getDate() - ricorrente.intervalloN);
-                return prossima;
             case "s":
-                prossima.setDate(prossima.getDate() - (ricorrente.intervalloN * 7));
+                intervalloN *= ricorrente.intervallo == "s" ? 7 : 1;
+                prossima.setDate(prossima.getDate() - (intervalloN * 2) + (ricorrente.intervallo === "g" ? 1 : 0));
                 return prossima;
+            /* case "s":
+                prossima.setDate(prossima.getDate() - (ricorrente.intervalloN * 7));
+                return prossima; */
             case "m":
                 intervalloN = ricorrente.intervalloN * (oggi.getDate() < prossima.getDate() ? 2 : 1);
                 prossima.setMonth(prossima.getMonth() - intervalloN);
@@ -59,33 +61,41 @@ export default class Ricorrente implements RicorrenteT {
         ricorrente = ricorrente as Ricorrente;
         oggi.setHours(0,0,0,0);
         switch (ricorrente.intervallo) {
-            case "g": {
+            case "g":
+            case "s": {
                 const giorni = Math.floor((oggi.getTime() - ricorrente.primoGiorno.getTime())/(1000*60*60*24));
-                let giorniOffset = ricorrente.intervalloN-(giorni % ricorrente.intervalloN);
+                let intervalloN: number = ricorrente.intervalloN;
+                if (ricorrente.intervallo === "s") {
+                    intervalloN = ricorrente.intervalloN * 7;  
+                } 
+                let giorniOffset = intervalloN - (giorni % intervalloN);
                 // if (giorniOffset === ricorrente.intervalloN) {giorniOffset = 0;}
                 oggi.setDate(oggi.getDate() + giorniOffset);
                 return oggi;
             }
-            case "s":
+            /* case "s":
+
                 oggi.setDate(oggi.getDate() + (ricorrente.primoGiorno.getDay() + 7 - oggi.getDay()) % 7);
-                return oggi;
+                return oggi; */
             case "a":
             case "m":
-                let mesiDiff = (oggi.getMonth() - ricorrente.primoGiorno.getMonth());
-                let diffAnni = oggi.getFullYear() - ricorrente.primoGiorno.getFullYear();
+                let mesiDiff = (oggi.getMonth() - ricorrente.primoGiorno.getMonth()); 
+                let diffAnni = oggi.getFullYear() - ricorrente.primoGiorno.getFullYear(); 
                 if (mesiDiff < 0) {
-                    diffAnni -= 1;
-                    mesiDiff += 12;
+                    diffAnni -= 1; 
+                    mesiDiff += 12; 
                 }
-                mesiDiff += diffAnni * 12;
-                let intervalloN = ricorrente.intervallo === "a" ? ricorrente.intervalloN * 12 : ricorrente.intervalloN;
-                let mesiOffset = intervalloN - (mesiDiff % intervalloN);
-                let isPreviousDate =  oggi.getDate() < ricorrente.primoGiorno.getDate() && (ricorrente.intervallo === "m" || oggi.getMonth() <= ricorrente.primoGiorno.getMonth())
+                mesiDiff += diffAnni * 12; 
+                let intervalloN = ricorrente.intervallo === "a" ? ricorrente.intervalloN * 12 : ricorrente.intervalloN; 
+                
+                let isPreviousDate =  oggi.getDate() < ricorrente.primoGiorno.getDate() && (ricorrente.intervallo === "m" || (oggi.getMonth() <= ricorrente.primoGiorno.getMonth() && oggi.getFullYear() <= ricorrente.primoGiorno.getFullYear()));
+
+                let mesiOffset: number = intervalloN - (mesiDiff % intervalloN); 
                 if (isPreviousDate) {
-                    mesiOffset -= intervalloN;
-                }
+                    mesiOffset -= intervalloN; 
+                } 
                 // NB. mesiOffset er 0 hvis offset måned er en valid prossima dato
-                oggi.setMonth(oggi.getMonth() + mesiOffset, ricorrente.primoGiorno.getDate());
+                oggi.setMonth(oggi.getMonth()/*02*/ + mesiOffset, ricorrente.primoGiorno.getDate());
                 return oggi;
         }
     }
