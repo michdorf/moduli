@@ -2,6 +2,7 @@
 import { makeArray } from './webapp.helper';
 import debug from './debug';
 import IcommonDB from './database.interface';
+import assert from '../assert';
 
 //prefixes of implementation that we want to test
 // indexedDB: IDBFactory = indexedDB || mozIndexedDB || webkitIndexedDB || msIndexedDB;
@@ -20,7 +21,7 @@ type CampoTipi = string | number;
 export type idbArgs =  {primary_key?: string, databasenavn?: string, tabelle?: string[], index?: string[][]};
 
 class iDB implements IcommonDB {
-  macchina: 'stellaDB' | 'indexedDB' = "indexedDB";
+  macchina: 'indexedDB' = "indexedDB";
   db_HDL: IDBDatabase | undefined;
   insert_id = 0;
   compat = true;
@@ -48,10 +49,10 @@ class iDB implements IcommonDB {
     return true;
   }
 
-  apri(nomebanca: string): Promise<IDBDatabase> {
+  apri(nomebanca: string): Promise<IcommonDB> {
     this.db_nome = nomebanca = nomebanca ? nomebanca : this.db_nome;
 
-    return new Promise<this>((resolve, reject) => {
+    return new Promise<IcommonDB>((resolve, reject) => {
       var db_versione = typeof this.db_HDL === "object" ? this.db_HDL.version + 1 : 1;
       var request = indexedDB.open(nomebanca);
       request.onerror = function (event) {
@@ -62,19 +63,27 @@ class iDB implements IcommonDB {
       request.onsuccess = (event) => {
         this.db_HDL = request.result;
         //debug.log("success: "+ iDB.db_HDL,"iDB");
-        resolve(this.db_HDL);
+        if (this.db_HDL) {
+          resolve(this);
+        } else {
+          reject(new Error("Database handle is undefined."));
+        }
       };
 
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         // @ts-ignore
         this.db_HDL = event.target.result;
         debug.log("database upgraderet", "iDB");
-        resolve(this.db_HDL);
+        if (this.db_HDL) {
+          resolve(this);
+        } else {
+          reject(new Error("Database handle is undefined."));
+        }
       };
 
       if (this.db_HDL) {
         this.db_HDL.onversionchange = () => {
-          this.db_HDL.close();
+          this.db_HDL?.close();
           alert("A new version of the page is ready Please reload!");
         };
       }
@@ -86,7 +95,8 @@ class iDB implements IcommonDB {
   }
 
   essisteTabella(tabella_nome: string) {
-    return this.db_HDL.objectStoreNames.contains(tabella_nome); // DOMStringList != Array
+    assert(!!this.db_HDL, "db_HDL is undefined in iDB.essisteTabella");
+    return this.db_HDL ? this.db_HDL.objectStoreNames.contains(tabella_nome) : false; // DOMStringList != Array
   }
 
 
@@ -114,7 +124,7 @@ class iDB implements IcommonDB {
       var request: IDBOpenDBRequest;
       if (typeof this.db_HDL === "object") {
         this.db_HDL.close();//Se vuoi fare l'upgrade deve essere chiuso
-        var db_versione = parseInt(this.db_HDL.version) + 1;
+        var db_versione = this.db_HDL.version + 1;
         //Man skal bruge databasen version (2nd argument) og forøge det for at trigge onupgradeneeded, som er det eneste sted, man kan skabe en tabel
         request = indexedDB.open(this.db_nome, db_versione);
         //Versionen kan i onsucces-eventen som parseInt(db.version) - se skabNyTabel()
@@ -131,6 +141,10 @@ class iDB implements IcommonDB {
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         // @ts-ignore jf. https://developer.mozilla.org/en-US/docs/Web/API/IDBOpenDBRequest/upgradeneeded_event
         this.db_HDL = event.target.result;
+        if (!this.db_HDL) {
+          reject(new Error("db_HDL undefined iDB.creaBanca"));
+          return;
+        }
 
         var indexer;
         var tabelle = makeArray(args.tabelle);
@@ -244,16 +258,23 @@ class iDB implements IcommonDB {
         return false;
       }
 
+      if (!this.db_HDL) {
+        reject("db_HDL undefined in iDB.select()");
+        return;
+      }
+
       var objectStore = this.db_HDL.transaction(/*[*/tabella/*]*/).objectStore(tabella);
-      var request = objectStore;
+      var request;
       if (args?.field) {
         try {
-          request = objectStore.index(args.field);//Man SKAL have skabt indexet i onversionchange-eventet
+          request = objectStore.index(args.field); //Man SKAL have skabt indexet i onversionchange-eventet
         } catch (error) {
           debug.error("Indexet " + args.field + " kunne ikke indexeres, da du skal have skabt indexet i onversionchange-eventet", "iDB");
           reject(new Error("Indexet " + args.field + " kunne ikke indexeres, da du skal have skabt indexet i onversionchange-eventet"));
           return false;
         }
+      } else {
+        request = objectStore;
       }
 
       var keyRangeValue = null; // Default
@@ -267,9 +288,9 @@ class iDB implements IcommonDB {
         keyRangeValue = IDBKeyRange.lowerBound(args.startinx);
         */
 
-      var direction = "next"; // Default
+      var direction: IDBCursorDirection = "next"; // Default
       if (args?.order && args.order.toLowerCase() === "desc")
-        direction = "prev";//Den bytter om på rækkefølgen, så den sidste bliver den første etc.
+        direction = "prev"; //Den bytter om på rækkefølgen, så den sidste bliver den første etc.
 
       var returneringer: Array<unknown> = [];
       var cursorInx = 0;
@@ -315,6 +336,10 @@ class iDB implements IcommonDB {
       if (!tabella) {
         reject(new Error("Devi specificare una tabella. iDB.select()"));
         return false;
+      }
+      if (!this.db_HDL) {
+        reject(new Error("Undefined db_HDL in iDB.num_rows()"));
+        return;
       }
 
       var request = this.db_HDL.transaction([tabella]).objectStore(tabella);
