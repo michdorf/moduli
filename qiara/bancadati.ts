@@ -3,6 +3,8 @@ import iDB, { idbArgs } from '../moduli/indexedDB'
 import stellaDB, { stellaArgs } from '../moduli/stellaDB';
 import IMemoRiga from "./riga.interface";
 import IcommonDB from '../moduli/database.interface';
+import Fornitore from '../moduli/fornitore';
+import assert from '../assert';
 
 export const UPDATE_TIPO: { [key: string]: tUPDATE_TIPO } = Object.freeze({ UPDATE: "update", INSERIMENTO: "inserisci", CANCELLAZIONE: "cancella" });
 export type tUPDATE_TIPO = "update" | "inserisci" | "cancella";
@@ -13,7 +15,7 @@ interface iUpdateListener {
 type tUpdateListeners = Array<iUpdateListener>;
 type tUpdateFunz = (tipo: tUPDATE_TIPO, riga: any, dalServer: boolean) => any;
 type suErroreFunz = (msg: string) => void;
-export type TMemoTabella = {
+export type TTabella = {
   nome: string,
   indexes?: string[],
   usaPGP?: boolean,
@@ -27,15 +29,16 @@ export type TMemoTabella = {
  * @param       {Array<Array<String>>} indexes de indexes hver tabel skal have
  * @constructor
  */
-export default class Memo {
+export default class Bancadati {
   db: IcommonDB;
   nome_db = "";
   nomi_tabelle: string[];
-  tabelle: TMemoTabella[] = [];
+  tabelle: TTabella[] = [];
   sonoPronto = false;
+  suRiazzera = new Fornitore<boolean>();
   uuid = uuid; // Funzione per creare identificativo unico
 
-  constructor(nome_db: string, tabelle: TMemoTabella[], sincInPausa?: boolean) {
+  constructor(nome_db: string, tabelle: TTabella[], sincInPausa?: boolean) {
     this.nome_db = nome_db;
     this.nomi_tabelle = tabelle.map(t => t.nome);
     this.tabelle = tabelle;
@@ -58,6 +61,7 @@ export default class Memo {
 
   async iniz_tabelle(nomi_tabelle: string[], suFinito: () => void, indexes?: string[][] | undefined) {
     let n_finiti = 0;
+
     nomi_tabelle = typeof nomi_tabelle !== "undefined" ? nomi_tabelle : [];
     for (var i = 0; i < nomi_tabelle.length; i++) {
       await this.autocrea_tabella(nomi_tabelle[i], () => {
@@ -131,7 +135,7 @@ export default class Memo {
     this.esegui_funzioni(this.$dopo_update, nome_tabella, tipo, riga, dalServer);
   }
 
-  trovaTabella(nome_tabella: string): TMemoTabella | undefined { 
+  trovaTabella(nome_tabella: string): TTabella | undefined { 
     return this.tabelle.find(t => t.nome === nome_tabella);
   }
 
@@ -186,7 +190,7 @@ export default class Memo {
     return nome_tabella.replace(/[^0-9a-z]/gi, "");
   };
 
-  inserisci = <T extends IMemoRiga & {UUID: string | undefined}>(tabella: TMemoTabella, riga: T, callback?: (rigaUUID: string) => void) => {
+  inserisci = <T extends IMemoRiga & {UUID: string | undefined}>(tabella: TTabella, riga: T, callback?: (rigaUUID: string) => void) => {
     if (this._esegue_senti) {
       console.error("Non e' una buona idea di eseguire Memo.inserisci() dentro Memo.senti(). Aborta!");
       return;
@@ -201,7 +205,8 @@ export default class Memo {
         riga = { ...origRiga, ...riga};
       }
       return this.db.inserisci(nome_tabella, riga).then((ins_id) => {
-        this.sinc.sinc_cambia("inserisci", tabella, riga);
+        // this.sinc.sinc_cambia("inserisci", tabella, riga); 
+        
         this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.INSERIMENTO, riga, false);
         if (typeof callback === "function") {
           callback(riga["UUID"]);
@@ -232,7 +237,7 @@ export default class Memo {
    * @param valori
    * @returns {*}
    */
-  update<rigaT extends IMemoRiga>(tabella: TMemoTabella, id_unico: string, valori: rigaT) {
+  update<rigaT extends IMemoRiga>(tabella: TTabella, id_unico: string, valori: rigaT) {
     return new Promise((resolve: (UUID: string) => void, reject) => {
       if (this._esegue_senti) {
         console.error("Non e' una buona idea di eseguire Memo.update() dentro Memo.senti(). Aborta!");
@@ -256,7 +261,7 @@ export default class Memo {
         valori = this.esegui_before_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
         this.db.update(nome_tabella, (rige[0] as { id: number; [key: string]: unknown }).id, valori).then(() => {
           valori["UUID"] = id_unico;
-          this.sinc.sinc_cambia("update", tabella, valori);
+          // this.sinc.sinc_cambia("update", tabella, valori);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
           resolve(id_unico);
         });
@@ -270,7 +275,7 @@ export default class Memo {
    * @param id_unico - UUID
    * @returns {*}
    */
-  cancella(tabella: TMemoTabella, id_unico: string) {
+  cancella(tabella: TTabella, id_unico: string) {
     return new Promise((resolve, reject) => {
       if (this._esegue_senti) {
         reject("Non e' una buona idea di eseguire Memo.cancella() dentro Memo.senti(). Aborta!");
@@ -294,7 +299,7 @@ export default class Memo {
           if (tabella.usaPGP) {
             valori = Object.assign(rige[0], valori);
           }
-          this.sinc.sinc_cambia("cancella", tabella, valori);
+          // this.sinc.sinc_cambia("cancella", tabella, valori);
           resolve(id_unico);
           this.esegui_dopo_update(nome_tabella, UPDATE_TIPO.UPDATE, valori, false);
         });
@@ -354,8 +359,7 @@ export default class Memo {
   };
 
   riazzera() {
-    this.sinc.sinc_riazzera();
-    this.pgp.riazzera();
+    this.suRiazzera.onEvento(true);
     this.db.eliminaDB(this.nome_db, function (tipo, msg) {
       location.reload();
     });

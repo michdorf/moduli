@@ -6,7 +6,8 @@ type TRiga = {
     eliminatoil?: number;
     /** @deprecated cambiati is not necessary anymore */    
     cambiati?: string; /* ";" delimeter */
-    cambiato: number;
+    server_t: number;
+    client_t?: number;
     creato?: number;
     [key: string]: any;
 }
