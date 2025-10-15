@@ -88,11 +88,9 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
   var timeout: ReturnType<typeof setTimeout> | null;
 
   // Calling debounce returns a new anonymous function
-  return function() {
+  return function(this: any, ...args: Parameters<T>) {
     // reference the context and args for the setTimeout function
-    // @ts-ignore
-    var context = this,
-      args = arguments;
+    var context = this;
 
     // Should the function be called now? If immediate is true
     //   and not already in a timeout then the answer is: Yes
@@ -116,12 +114,12 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
         // Call the original function with apply
         // apply lets you define the 'this' object as well as the arguments
         //    (both captured before setTimeout)
-        func.apply(context, args);
+        func.apply(context, args as any);
       }
     }, wait);
 
     // Immediate mode and no wait timer? Execute the function..
-    if (callNow) func.apply(context, args);
+    if (callNow) func.apply(context, args as any);
   };
 };
 

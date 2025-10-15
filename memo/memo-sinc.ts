@@ -91,7 +91,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
       return;
     }
     const encrypted = await this.memo.pgp.encrypt(this.access_token, JSON.stringify(riga));
-    payload = { UUID: riga.UUID, payload: encrypted };
+    payload = { UUID: riga.UUID, payload: encrypted, cambiato: 0 };
     const plainValues = tabella.noPGP?.reduce((acc, key) => {
       if (key in riga) {
         acc = { ...acc, [key]: riga[key] };
