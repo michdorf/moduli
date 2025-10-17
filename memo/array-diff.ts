@@ -1,10 +1,4 @@
-/** @deprecated I don't think it makes sense to convert an array to this
-more complex datastructure. It is better to simply use Maps or map-like
-structure like [["0": "allan"], ["3", "Bitter"]] etc. like is use for assegnamenti:
-[["2024-10-08": 2], ["2023-12-24", 100]]
-*/
-
-type TArrayDiff<T> = Array<[number, T]>;
+export type TArrayDiff<T> = Array<[number, T]>;
 type TChange = "a" | "d" | "c"; // add, delete, change
 
 export default class ArrayDiff<T> {
@@ -21,6 +15,7 @@ export default class ArrayDiff<T> {
         }
     }
 
+    /** Obs. if array is already in right TArrayDiff<T> format then run .load(array) */
     static fromArray<T>(value: Array<T>) {
         const r = new Map<number, T>();
         for (let i = 0; i < value.length; i++) {
@@ -32,6 +27,12 @@ export default class ArrayDiff<T> {
 
     load(state: TArrayDiff<T>){
         this.value = new Map(state);
+    }
+
+    static load<T>(state: TArrayDiff<T>) {
+        const a = new ArrayDiff<T>([]);
+        a.load(state);
+        return a;
     }
 
     static combineKeys<T>(...m: Array<Map<T, unknown>>): Set<T> {
