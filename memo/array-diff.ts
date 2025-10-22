@@ -1,18 +1,31 @@
+import assert from "../assert";
+
 export type TArrayDiff<T> = Array<[number, T]>;
 type TChange = "a" | "d" | "c"; // add, delete, change
 
 export default class ArrayDiff<T> {
     value: Map<number, T> = new Map();
 
-    constructor(value?: Array<T>) {
+    constructor(value?: TArrayDiff<T>) {
         if (value)
             this.fromArray(value);
     }
 
-    fromArray(value: Array<T>) {
-        for (let i = 0; i < value.length; i++) {
-            this.value.set(i, value[i]);
-        }
+    static fromUnKeyedArray<T>(array: Array<T>): ArrayDiff<T> {
+        return new ArrayDiff<T>(array.map((v, i) => [i, v]));
+    }
+
+    static isValidArray<T>(array: TArrayDiff<T>) {
+        return array.length === 0 || (Array.isArray(array) && Array.isArray(array[0]));
+    }
+
+    /**
+     * Converts a keyed array to a ArrayDiff object
+     * @param value must be set up correctly: [[0, "a"], [1, "b"]]
+     */
+    fromArray(value: TArrayDiff<T>) {
+        assert(ArrayDiff.isValidArray(value), "Array needs to be keyed array in from Array");
+        this.value = new Map(value); 
     }
 
     /** Obs. if array is already in right TArrayDiff<T> format then run .load(array) */
@@ -25,7 +38,9 @@ export default class ArrayDiff<T> {
         return r;
     }
 
+    /** @deprecated use fromArray instead */
     load(state: TArrayDiff<T>){
+        assert(ArrayDiff.isValidArray(state), "Array needs to be keyed array in from Array");
         this.value = new Map(state);
     }
 
@@ -97,6 +112,7 @@ export default class ArrayDiff<T> {
     }
 
     toArray(): TArrayDiff<T> {
+        console.log(this.value, [...this.value]);
         return [...this.value];
     }
 
