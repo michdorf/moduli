@@ -377,7 +377,7 @@ export class MemoSinc /* extends Memo */ { // Circular import - fix it
 
   extractValori(tabella: TMemoTabella, valori: IMemoRiga, update_tipo: tUPDATE_TIPO) {
     return new Promise<IMemoRiga>((reoslve, reject) => {
-      if (tabella.usaPGP && valori.payload) { // Actually it should be enough to just check valori.payload !== ""
+      if (/* tabella.usaPGP &&  */valori.payload) { // Actually it should be enough to just check valori.payload !== ""
         if (!this.memo.pgp.isReady()) {
           this.memo.errore("PGP non pronto");
           reject("PGP non pronto");
